@@ -1,9 +1,17 @@
 import { redirect } from "next/navigation";
 
+import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { LogoutHandler } from "@/components/auth/LogoutHandler";
+import { getSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export default async function LogoutPage() {
+  if (!getSupabaseConfig()) {
+    return (
+      <SupabaseEnvWarning description="Add your Supabase credentials to enable session management and sign-out." />
+    );
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },

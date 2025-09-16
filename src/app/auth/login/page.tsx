@@ -1,10 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { getSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export default async function LoginPage() {
+  if (!getSupabaseConfig()) {
+    return (
+      <SupabaseEnvWarning description="Add your Supabase project credentials to enable the login experience." />
+    );
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },

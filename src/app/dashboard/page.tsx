@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
+import { getSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 type ProfileRow = {
@@ -35,6 +37,14 @@ function formatDateTime(value: Date | null) {
 }
 
 export default async function DashboardPage() {
+  if (!getSupabaseConfig()) {
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-16">
+        <SupabaseEnvWarning description="Add your Supabase credentials to load account and subscription details." />
+      </div>
+    );
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },

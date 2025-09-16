@@ -1,22 +1,19 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-function requireEnv(value: string | undefined, key: string): string {
-  if (!value) {
-    throw new Error(`${key} is not set`);
-  }
+import { getSupabaseConfigOrThrow } from "./env";
 
-  return value;
-}
-
-const supabaseUrl = requireEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  "NEXT_PUBLIC_SUPABASE_URL",
-);
-const supabaseAnonKey = requireEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
+let client: SupabaseClient | undefined;
 
 export function createSupabaseBrowserClient() {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  if (!client) {
+    const { url, anonKey } = getSupabaseConfigOrThrow();
+    client = createClient(url, anonKey, {
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+    });
+  }
+
+  return client;
 }

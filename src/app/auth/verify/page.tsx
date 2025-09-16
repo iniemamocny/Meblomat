@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
+import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { VerificationHandler } from "@/components/auth/VerificationHandler";
+import { getSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 type VerifyPageProps = {
@@ -9,6 +11,12 @@ type VerifyPageProps = {
 };
 
 export default async function VerifyPage({ searchParams }: VerifyPageProps) {
+  if (!getSupabaseConfig()) {
+    return (
+      <SupabaseEnvWarning description="Add your Supabase credentials to complete email verification flows." />
+    );
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },

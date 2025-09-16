@@ -1,41 +1,29 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-function requireEnv(value: string | undefined, key: string): string {
-  if (!value) {
-    throw new Error(`${key} is not set`);
-  }
-
-  return value;
-}
-
-const supabaseUrl = requireEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  "NEXT_PUBLIC_SUPABASE_URL",
-);
-const supabaseAnonKey = requireEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
+import { getSupabaseConfigOrThrow } from "./env";
 
 export function createSupabaseServerClient() {
-  const cookieStore = cookies();
+  const { url, anonKey } = getSupabaseConfigOrThrow();
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(url, anonKey, {
     cookies: {
-      get(name: string) {
+      async get(name: string) {
+        const cookieStore = await cookies();
         return cookieStore.get(name)?.value;
       },
-      set(name: string, value: string, options?: CookieOptions) {
+      async set(name: string, value: string, options: CookieOptions = {}) {
         try {
+          const cookieStore = await cookies();
           cookieStore.set(name, value, options);
         } catch {
           // The cookies API can be read-only in some Next.js rendering phases.
         }
       },
-      remove(name: string) {
+      async remove(name: string, options: CookieOptions = {}) {
         try {
-          cookieStore.delete(name);
+          const cookieStore = await cookies();
+          cookieStore.delete({ name, ...options });
         } catch {
           // Ignore removal errors when cookies are read-only.
         }
