@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { AuthError } from "@supabase/supabase-js";
 
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
@@ -51,18 +52,27 @@ export function VerificationHandler({
 
     const verify = async () => {
       setStatus("processing");
-      const { error } = await supabase.auth.exchangeCodeForSession({
-        code,
-        type: type as SupportedVerificationType,
-      });
+
+      let authError: AuthError | null = null;
+
+      if (type === "email_change") {
+        const { error } = await supabase.auth.verifyOtp({
+          type: "email_change",
+          token_hash: code,
+        });
+        authError = error;
+      } else {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        authError = error;
+      }
 
       if (!active) {
         return;
       }
 
-      if (error) {
+      if (authError) {
         setStatus("error");
-        setErrorMessage(error.message);
+        setErrorMessage(authError.message);
         return;
       }
 
