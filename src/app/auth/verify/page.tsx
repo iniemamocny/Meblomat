@@ -17,19 +17,20 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
     );
   }
 
+  const codeParam = searchParams?.code;
+  const typeParam = searchParams?.type;
+  const code = typeof codeParam === "string" ? codeParam : null;
+  const type = typeof typeParam === "string" ? typeParam : null;
+  const hasVerificationPayload = Boolean(code && type);
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
+  if (user && !hasVerificationPayload) {
     redirect("/dashboard");
   }
-
-  const codeParam = searchParams?.code;
-  const typeParam = searchParams?.type;
-  const code = typeof codeParam === "string" ? codeParam : null;
-  const type = typeof typeParam === "string" ? typeParam : null;
 
   return (
     <div className="space-y-6">
