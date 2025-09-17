@@ -1,15 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
+import { AvatarPicker } from "@/components/dashboard/AvatarPicker";
+import { UserAvatar } from "@/components/layout/UserAvatar";
+import {
+  DEFAULT_AVATAR_ID,
+  getAvatarPresetIcon,
+  type AvatarType,
+} from "@/lib/avatar";
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 type ProfileRow = {
   subscription_expires_at: string | null;
+  avatar_type: AvatarType | null;
+  avatar_path: string | null;
+};
+
+type AvatarChangePayload = {
+  type: AvatarType;
+  path: string;
+  imageUrl: string | null;
+  error?: string | null;
 };
 
 const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -48,8 +64,37 @@ export default function DashboardPage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] =
+    useState<string | null>(null);
   const [profileError, setProfileError] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [avatarType, setAvatarType] = useState<AvatarType>("icon");
+  const [avatarPath, setAvatarPath] = useState<string>(DEFAULT_AVATAR_ID);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarLoadError, setAvatarLoadError] = useState<string | null>(null);
+
+  const handleAvatarChange = useCallback(
+    (change: AvatarChangePayload) => {
+      const normalizedPath = change.path || DEFAULT_AVATAR_ID;
+      const nextType: AvatarType = change.type === "upload" ? "upload" : "icon";
+
+      setAvatarType(nextType);
+      setAvatarPath(normalizedPath);
+
+      if (nextType === "upload") {
+        setAvatarUrl(change.imageUrl ?? null);
+        setAvatarLoadError(
+          change.error
+            ? "Nie udało się wczytać podglądu avatara. Spróbuj odświeżyć stronę lub wybrać plik ponownie."
+            : null,
+        );
+      } else {
+        setAvatarUrl(null);
+        setAvatarLoadError(null);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!supabase) {
@@ -76,15 +121,46 @@ export default function DashboardPage() {
       }
 
       setUserEmail(user.email ?? null);
+      setUserId(user.id);
 
-      const { data: profile, error: profileFetchError } = await supabase
+      const {
+        data: profile,
+        error: profileFetchError,
+      } = await supabase
         .from("profiles")
-        .select("subscription_expires_at")
+        .select("subscription_expires_at, avatar_type, avatar_path")
         .eq("id", user.id)
         .maybeSingle<ProfileRow>();
 
       if (!active) {
         return;
+      }
+
+      let nextAvatarType: AvatarType = "icon";
+      let nextAvatarPath = DEFAULT_AVATAR_ID;
+      let nextAvatarUrl: string | null = null;
+      let hasPreviewError = false;
+
+      if (!profileFetchError && profile) {
+        nextAvatarType = profile.avatar_type === "upload" ? "upload" : "icon";
+        nextAvatarPath = profile.avatar_path ?? DEFAULT_AVATAR_ID;
+
+        if (nextAvatarType === "upload" && profile.avatar_path) {
+          const { data: signedUrlData, error: signedUrlError } =
+            await supabase.storage
+              .from("avatars")
+              .createSignedUrl(profile.avatar_path, 60 * 60 * 24 * 7);
+
+          if (!active) {
+            return;
+          }
+
+          if (signedUrlError) {
+            hasPreviewError = true;
+          } else {
+            nextAvatarUrl = signedUrlData?.signedUrl ?? null;
+          }
+        }
       }
 
       if (profileFetchError) {
@@ -95,6 +171,13 @@ export default function DashboardPage() {
         setSubscriptionExpiresAt(profile?.subscription_expires_at ?? null);
       }
 
+      handleAvatarChange({
+        type: nextAvatarType,
+        path: nextAvatarPath,
+        imageUrl: nextAvatarUrl,
+        error: hasPreviewError ? "preview-error" : null,
+      });
+
       setIsLoading(false);
     };
 
@@ -103,13 +186,19 @@ export default function DashboardPage() {
         return;
       }
 
+      handleAvatarChange({
+        type: "icon",
+        path: DEFAULT_AVATAR_ID,
+        imageUrl: null,
+        error: null,
+      });
       router.replace("/auth/login");
     });
 
     return () => {
       active = false;
     };
-  }, [router, supabase]);
+  }, [handleAvatarChange, router, supabase]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -165,6 +254,16 @@ export default function DashboardPage() {
     }
   }
 
+  const avatarPresetIcon = getAvatarPresetIcon(avatarPath);
+  const avatarInitials = userEmail?.[0]?.toUpperCase();
+  const showPreviewLoadingMessage =
+    avatarType === "upload" && !avatarUrl && !avatarLoadError;
+  const avatarFallbackIcon = (
+    <span aria-hidden="true" className="text-2xl">
+      {avatarPresetIcon}
+    </span>
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-16">
       <header className="space-y-2">
@@ -214,6 +313,45 @@ export default function DashboardPage() {
             >
               Contact support
             </a>
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
+          <h2 className="text-lg font-semibold">Avatar</h2>
+          <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+            Wybierz ikonę, która będzie widoczna w nagłówku i na dashboardzie.
+          </p>
+          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center">
+            <UserAvatar
+              imageUrl={avatarType === "upload" ? avatarUrl : null}
+              fallbackIcon={avatarFallbackIcon}
+              initials={avatarInitials}
+              className="size-16 text-2xl"
+            />
+            <div className="text-sm/6 text-black/60 dark:text-white/60">
+              {avatarLoadError ? (
+                <p className="text-red-600 dark:text-red-400">{avatarLoadError}</p>
+              ) : showPreviewLoadingMessage ? (
+                <p>Trwa generowanie podglądu przesłanego obrazu…</p>
+              ) : (
+                <p>Tak będzie wyglądał Twój profil w aplikacji.</p>
+              )}
+            </div>
+          </div>
+          <div className="mt-6">
+            {supabase && userId ? (
+              <AvatarPicker
+                supabase={supabase}
+                userId={userId}
+                currentAvatarType={avatarType}
+                currentAvatarPath={avatarPath}
+                onAvatarChange={handleAvatarChange}
+              />
+            ) : (
+              <p className="text-sm/6 text-black/60 dark:text-white/60">
+                Zaloguj się, aby zmienić avatar.
+              </p>
+            )}
           </div>
         </article>
       </section>
