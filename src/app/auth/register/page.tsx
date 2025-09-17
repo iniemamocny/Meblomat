@@ -1,25 +1,56 @@
+"use client";
+
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { getSupabaseConfig } from "@/lib/env";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
-export default async function RegisterPage() {
-  if (!getSupabaseConfig()) {
+export default function RegisterPage() {
+  const router = useRouter();
+  const isSupabaseConfigured = isSupabaseConfiguredOnClient();
+  const supabase = useMemo(
+    () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
+    [isSupabaseConfigured],
+  );
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    let active = true;
+
+    const checkSession = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!active) {
+        return;
+      }
+
+      if (user) {
+        router.replace("/dashboard");
+      }
+    };
+
+    checkSession().catch(() => {
+      // Ignore errors and allow the user to attempt registration.
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [router, supabase]);
+
+  if (!isSupabaseConfigured) {
     return (
       <SupabaseEnvWarning description="Add your Supabase credentials to allow new users to register for the service." />
     );
-  }
-
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect("/dashboard");
   }
 
   return (
