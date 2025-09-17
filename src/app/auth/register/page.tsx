@@ -22,7 +22,18 @@ function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const invitationToken = searchParams?.get("invitation") ?? undefined;
-  const forcedAccountType: AccountType | undefined = invitationToken ? "carpenter" : undefined;
+  const accountParam = searchParams?.get("account");
+  const forcedAccountType: AccountType | undefined = (() => {
+    if (accountParam === "carpenter" || accountParam === "client") {
+      return accountParam;
+    }
+
+    if (invitationToken) {
+      return "client";
+    }
+
+    return undefined;
+  })();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accountType, setAccountType] = useState<AccountType>(forcedAccountType ?? "client");
