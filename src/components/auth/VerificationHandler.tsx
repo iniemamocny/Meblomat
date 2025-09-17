@@ -15,6 +15,7 @@ type SupportedVerificationType =
 
 type Props = {
   code?: string | null;
+  tokenHash?: string | null;
   type?: string | null;
   redirectPath?: string;
 };
@@ -27,8 +28,21 @@ const SUPPORTED_TYPES = new Set<SupportedVerificationType>([
   "email_change",
 ]);
 
+type SupabaseBrowserClient = ReturnType<typeof createSupabaseBrowserClient>;
+
+export async function verifyEmailChangeRequest(
+  supabase: SupabaseBrowserClient,
+  token: string,
+) {
+  return supabase.auth.verifyOtp({
+    type: "email_change",
+    token_hash: token,
+  });
+}
+
 export function VerificationHandler({
   code,
+  tokenHash,
   type,
   redirectPath = "/dashboard",
 }: Props) {
@@ -38,11 +52,21 @@ export function VerificationHandler({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!code || !type) {
+    if (!type) {
+      return;
+    }
+
+    if (!code && !tokenHash) {
       return;
     }
 
     if (!SUPPORTED_TYPES.has(type as SupportedVerificationType)) {
+      setStatus("error");
+      setErrorMessage("This verification link is not valid.");
+      return;
+    }
+
+    if (type !== "email_change" && !code) {
       setStatus("error");
       setErrorMessage("This verification link is not valid.");
       return;
@@ -56,13 +80,16 @@ export function VerificationHandler({
       let authError: AuthError | null = null;
 
       if (type === "email_change") {
-        const { error } = await supabase.auth.verifyOtp({
-          type: "email_change",
-          token_hash: code,
-        });
+        const token = tokenHash ?? code;
+        if (!token) {
+          setStatus("error");
+          setErrorMessage("This verification link is not valid.");
+          return;
+        }
+        const { error } = await verifyEmailChangeRequest(supabase, token);
         authError = error;
       } else {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code!);
         authError = error;
       }
 
@@ -86,9 +113,9 @@ export function VerificationHandler({
     return () => {
       active = false;
     };
-  }, [code, redirectPath, router, supabase, type]);
+  }, [code, redirectPath, router, supabase, tokenHash, type]);
 
-  if (!code || !type) {
+  if ((!code && !tokenHash) || !type) {
     return null;
   }
 

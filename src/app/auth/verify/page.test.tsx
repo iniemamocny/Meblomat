@@ -71,6 +71,28 @@ describe("VerifyPage", () => {
     const verificationElement = findVerificationHandler(element);
     expect(verificationElement).not.toBeNull();
     expect(verificationElement?.props.code).toBe("test-token");
+    expect(verificationElement?.props.tokenHash).toBeNull();
+    expect(verificationElement?.props.type).toBe("email_change");
+  });
+
+  it("renders the verification handler when only a token hash is provided", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "user-123" } },
+    });
+
+    const element = await VerifyPage({
+      searchParams: {
+        token_hash: "test-token-hash",
+        type: "email_change",
+      },
+    });
+
+    expect(redirectMock).not.toHaveBeenCalled();
+
+    const verificationElement = findVerificationHandler(element);
+    expect(verificationElement).not.toBeNull();
+    expect(verificationElement?.props.code).toBeNull();
+    expect(verificationElement?.props.tokenHash).toBe("test-token-hash");
     expect(verificationElement?.props.type).toBe("email_change");
   });
 });

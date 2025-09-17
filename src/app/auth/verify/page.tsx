@@ -18,10 +18,13 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
   }
 
   const codeParam = searchParams?.code;
+  const tokenHashParam = searchParams?.token_hash;
   const typeParam = searchParams?.type;
   const code = typeof codeParam === "string" ? codeParam : null;
+  const tokenHash =
+    typeof tokenHashParam === "string" ? tokenHashParam : null;
   const type = typeof typeParam === "string" ? typeParam : null;
-  const hasVerificationPayload = Boolean(code && type);
+  const hasVerificationPayload = Boolean(type && (code || tokenHash));
 
   const supabase = createSupabaseServerClient();
   const {
@@ -41,7 +44,7 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
           in.
         </p>
       </div>
-      <VerificationHandler code={code} type={type} />
+      <VerificationHandler code={code} tokenHash={tokenHash} type={type} />
       <div className="space-y-4">
         <p className="text-sm/6 text-black/60 dark:text-white/60">
           If you&apos;re entering a code manually, paste it below to complete the
