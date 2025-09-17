@@ -2,13 +2,19 @@
 
 import Link from "next/link";
 
-const navigationLinks = [
+type NavigationLink = {
+  href: string;
+  label: string;
+  withIcon?: boolean;
+};
+
+const navigationLinks: NavigationLink[] = [
   { href: "/#meble", label: "meble" },
   { href: "/#pomieszczenie", label: "pomieszczenie" },
   { href: "/#wycena", label: "wycena" },
   { href: "/#formatki", label: "formatki" },
   { href: "/play", label: "play", withIcon: true },
-] as const;
+];
 
 export default function AppHeader() {
   return (
