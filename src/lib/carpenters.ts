@@ -31,7 +31,7 @@ export async function listCarpenterClients(supabase: SupabaseClient) {
     throw error;
   }
 
-  return (data ?? []).map((entry) => ({
+  return (data ?? []).map((entry: Record<string, unknown>) => ({
     clientId: entry.client_id as string,
     clientEmail: (entry.client_email as string | null) ?? null,
     avatarType: (entry.avatar_type as AvatarType | null) ?? null,
@@ -67,7 +67,7 @@ export async function listActiveCarpenters(supabase: SupabaseClient) {
     throw error;
   }
 
-  return (data ?? []).map((record) => ({
+  return (data ?? []).map((record: Record<string, unknown>) => ({
     carpenterId: record.carpenter_id as string,
     carpenterEmail: (record.carpenter_email as string | null) ?? null,
     avatarType: (record.avatar_type as AvatarType | null) ?? null,

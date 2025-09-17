@@ -361,7 +361,8 @@ export default function DashboardPage() {
             if (
               current &&
               activeCarpentersList.some(
-                (carpenter) => carpenter.carpenterId === current,
+                (carpenter: ActiveCarpenter) =>
+                  carpenter.carpenterId === current,
               )
             ) {
               return current;
