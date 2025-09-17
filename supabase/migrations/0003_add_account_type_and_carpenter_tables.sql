@@ -1,25 +1,8 @@
-# Supabase setup
+-- Introduce account types and carpenter collaboration tables.
 
-The application now differentiates between clients, carpenters, and admins through profile metadata and collaboration tables. Run the SQL below against a brand new Supabase project **before** starting the Next.js app so authenticated users can load their dashboard without errors.
-
-> ℹ️ The same SQL lives in [`supabase/migrations`](../supabase/migrations) (including [`0003_add_account_type_and_carpenter_tables.sql`](../supabase/migrations/0003_add_account_type_and_carpenter_tables.sql)) if you prefer applying it through the Supabase CLI.
-
-## 1. Create the tables, policies, and triggers
-
-Run the full script in the Supabase SQL editor (or apply it through the CLI as described later). It will:
-
-- create the `public.profiles` table linked to `auth.users`, including an `account_type` column that defaults to `client`,
-- enable row level security and policies so a user can read their own profile data,
-- store default avatar metadata for every profile,
-- add triggers that default and guard the `subscription_expires_at`, avatar metadata, and `account_type` columns,
-- insert a profile automatically whenever a new auth user is created,
-- create collaboration tables for carpenter invitations, active client links, and shared projects, and
-- apply row level security policies so carpenters manage their own data, clients can read their assignments, and admins retain full access.
-
-```sql
--- Extensions and enumerations used by the collaboration tables.
 create extension if not exists "pgcrypto";
 
+-- Ensure the enum type exists for account classifications.
 do $$
 begin
   create type public.account_type as enum ('carpenter', 'client', 'admin');
@@ -28,52 +11,15 @@ exception
 end;
 $$;
 
--- Create the table that the Next.js app reads from.
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  subscription_expires_at timestamptz not null,
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-  avatar_type text not null default 'icon',
-  avatar_path text not null default 'user',
-  account_type public.account_type not null default 'client'
-);
-
-alter table public.profiles
-  add column if not exists avatar_type text not null default 'icon';
-
-alter table public.profiles
-  add column if not exists avatar_path text not null default 'user';
-
+-- Add the account_type column with a default for newly inserted rows.
 alter table public.profiles
   add column if not exists account_type public.account_type not null default 'client';
 
--- Populate existing rows so new NOT NULL constraints succeed.
+-- Backfill existing rows so the new NOT NULL constraint succeeds.
 update public.profiles
-set
-  avatar_type = coalesce(avatar_type, 'icon'),
-  avatar_path = coalesce(avatar_path, 'user'),
-  account_type = coalesce(account_type, 'client');
+set account_type = coalesce(account_type, 'client');
 
-alter table public.profiles enable row level security;
-
-create index if not exists profiles_subscription_expires_at_idx
-  on public.profiles (subscription_expires_at);
-
--- Ensure every signed-in user can read their own profile row.
-create policy if not exists "Profiles are readable by their owner"
-  on public.profiles
-  for select
-  using (auth.uid() = id);
-
--- Allow future profile columns to be updated by the owner while
--- a trigger (defined below) keeps the subscription timestamp locked down.
-create policy if not exists "Profiles are updatable by their owner"
-  on public.profiles
-  for update
-  using (auth.uid() = id);
-
--- Default the subscription expiry, timestamps, and account type whenever a row is inserted.
+-- Refresh the defaulting trigger to cover the new column.
 create or replace function public.profiles_set_defaults()
 returns trigger
 language plpgsql
@@ -88,7 +34,6 @@ begin
   new.updated_at := timezone('utc', now());
 
   if new.subscription_expires_at is null then
-    -- Give each account an initial 14-day trial period.
     new.subscription_expires_at := timezone('utc', now()) + interval '14 days';
   end if;
 
@@ -108,13 +53,7 @@ begin
 end;
 $$;
 
-drop trigger if exists profiles_set_defaults on public.profiles;
-create trigger profiles_set_defaults
-  before insert on public.profiles
-  for each row execute function public.profiles_set_defaults();
-
--- Prevent regular users from extending their own subscription timestamp or promoting themselves
--- while still updating the audit column.
+-- Lock both the subscription expiry and account type from self-service escalation.
 create or replace function public.profiles_lock_subscription()
 returns trigger
 language plpgsql
@@ -126,8 +65,6 @@ declare
 begin
   new.updated_at := timezone('utc', now());
 
-  -- Only service_role / supabase_admin (or direct SQL sessions without a JWT)
-  -- may alter the subscription expiry timestamp or account type.
   if jwt_role is not null and jwt_role not in ('service_role', 'supabase_admin') then
     new.subscription_expires_at := old.subscription_expires_at;
     new.account_type := old.account_type;
@@ -145,33 +82,18 @@ begin
 end;
 $$;
 
+-- Recreate the triggers so the new function bodies are active.
+drop trigger if exists profiles_set_defaults on public.profiles;
+create trigger profiles_set_defaults
+  before insert on public.profiles
+  for each row execute function public.profiles_set_defaults();
+
 drop trigger if exists profiles_lock_subscription on public.profiles;
 create trigger profiles_lock_subscription
   before update on public.profiles
   for each row execute function public.profiles_lock_subscription();
 
--- Automatically create a profile row whenever Supabase adds an auth user.
-create or replace function public.handle_new_user_profile()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id)
-  values (new.id)
-  on conflict (id) do nothing;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created_for_profiles on auth.users;
-create trigger on_auth_user_created_for_profiles
-  after insert on auth.users
-  for each row execute function public.handle_new_user_profile();
-
--- Collaboration tables for carpenters and their clients.
+-- Collaboration tables that link carpenters to clients and shared projects.
 create table if not exists public.carpenter_invitations (
   token uuid primary key default gen_random_uuid(),
   carpenter_id uuid not null references public.profiles(id) on delete cascade,
@@ -214,11 +136,12 @@ create index if not exists carpenter_projects_carpenter_id_idx
 create index if not exists carpenter_projects_client_id_idx
   on public.carpenter_projects (client_id);
 
+-- Enable row level security on the new tables.
 alter table public.carpenter_invitations enable row level security;
 alter table public.carpenter_clients enable row level security;
 alter table public.carpenter_projects enable row level security;
 
--- Policies for carpenter invitations.
+-- Policies for carpenter_invitations.
 create policy if not exists "Carpenters view their invitations"
   on public.carpenter_invitations
   for select
@@ -525,64 +448,3 @@ create policy if not exists "Carpenters delete shared projects"
         and p.account_type = 'admin'
     )
   );
-```
-
-## 2. Apply the script with the Supabase CLI (optional)
-
-If you prefer using migrations:
-
-1. Install the [Supabase CLI](https://supabase.com/docs/guides/cli) and run `supabase login`.
-2. Link your project in this repo directory:
-   ```bash
-   supabase link --project-ref <your-project-ref>
-   ```
-3. Execute the bundled migrations:
-   ```bash
-   supabase db push
-   ```
-
-The CLI will run every SQL file in [`supabase/migrations`](../supabase/migrations) (including the new account-type migration `0003_add_account_type_and_carpenter_tables.sql`) against the linked project.
-
-Once the script is applied, create an account through the app. A matching `public.profiles` row will be created automatically with a trial `subscription_expires_at`, letting the dashboard render the subscription warning banners correctly. Carpenters can invite clients and track shared projects immediately after provisioning.
-
-## 3. Provision the Storage bucket for avatars
-
-Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files:
-
-```sql
-select storage.create_bucket('avatars', jsonb_build_object('public', false));
-
-create policy if not exists "Avatar files are readable by their owner"
-  on storage.objects for select
-  using (
-    bucket_id = 'avatars'
-    and auth.uid() = owner
-  );
-
-create policy if not exists "Avatar files are uploaded by their owner"
-  on storage.objects for insert
-  with check (
-    bucket_id = 'avatars'
-    and auth.uid() = owner
-  );
-
-create policy if not exists "Avatar files are replaceable by their owner"
-  on storage.objects for update
-  using (
-    bucket_id = 'avatars'
-    and auth.uid() = owner
-  )
-  with check (
-    bucket_id = 'avatars'
-    and auth.uid() = owner
-  );
-
-create policy if not exists "Avatar files are removable by their owner"
-  on storage.objects for delete
-  using (
-    bucket_id = 'avatars'
-    and auth.uid() = owner
-  );
-```
-
-> ℹ️ If you rerun the SQL after the bucket already exists, Supabase will ignore the `create_bucket` call. The `if not exists` guards keep the Storage policies idempotent as well.
