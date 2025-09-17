@@ -1,7 +1,4 @@
-export type SupabaseConfig = {
-  url: string;
-  anonKey: string;
-};
+import type { SupabaseConfig } from "./supabaseConfig";
 
 const SUPABASE_URL_ENV = "NEXT_PUBLIC_SUPABASE_URL";
 const SUPABASE_ANON_KEY_ENV = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
