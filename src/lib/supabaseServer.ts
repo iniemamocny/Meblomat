@@ -23,7 +23,7 @@ export function createSupabaseServerClient() {
       async remove(name: string, options: CookieOptions = {}) {
         try {
           const cookieStore = await cookies();
-          cookieStore.delete({ name, ...options });
+          cookieStore.delete(name, options);
         } catch {
           // Ignore removal errors when cookies are read-only.
         }
