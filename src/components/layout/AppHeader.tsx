@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FormEvent, useState } from "react";
 
 type NavigationLink = {
   href: string;
@@ -17,6 +18,12 @@ const navigationLinks: NavigationLink[] = [
 ];
 
 export default function AppHeader() {
+  const [showLogin, setShowLogin] = useState(false);
+
+  const handleLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+  };
+
   return (
     <header className="border-b border-black/10 bg-white/80 px-4 py-4 backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/80">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-6">
@@ -46,19 +53,57 @@ export default function AppHeader() {
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-3 text-sm font-medium">
-          <Link
-            className="rounded-full px-4 py-2 text-black transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10"
-            href="/auth/login"
-          >
-            Zaloguj się
-          </Link>
-          <Link
-            className="rounded-full bg-black px-4 py-2 text-white shadow-sm transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
-            href="/auth/register"
-          >
-            Utwórz konto
-          </Link>
+        <div className="flex flex-col items-end gap-3 text-sm font-medium">
+          <div className="flex items-center gap-3">
+            <button
+              className="rounded-full px-4 py-2 text-black transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10"
+              onClick={() => setShowLogin((prev) => !prev)}
+              type="button"
+            >
+              Zaloguj się
+            </button>
+            <Link
+              className="rounded-full bg-black px-4 py-2 text-white shadow-sm transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+              href="/auth/register"
+            >
+              Utwórz konto
+            </Link>
+          </div>
+          {showLogin ? (
+            <form
+              className="flex w-full max-w-xs flex-col gap-2 rounded-lg border border-black/10 bg-white p-4 text-left text-sm text-black shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-white"
+              onSubmit={handleLoginSubmit}
+            >
+              <label className="flex flex-col gap-1 text-xs font-medium text-black/70 dark:text-white/70">
+                Nazwa użytkownika
+                <input
+                  autoComplete="username"
+                  className="rounded-md border border-black/10 px-3 py-2 text-sm text-black outline-none transition focus:border-black/40 focus:ring-0 dark:border-white/10 dark:bg-neutral-800 dark:text-white dark:focus:border-white/40"
+                  name="username"
+                  placeholder="Wpisz nazwę użytkownika"
+                  required
+                  type="text"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium text-black/70 dark:text-white/70">
+                Hasło
+                <input
+                  autoComplete="current-password"
+                  className="rounded-md border border-black/10 px-3 py-2 text-sm text-black outline-none transition focus:border-black/40 focus:ring-0 dark:border-white/10 dark:bg-neutral-800 dark:text-white dark:focus:border-white/40"
+                  name="password"
+                  placeholder="Wpisz hasło"
+                  required
+                  type="password"
+                />
+              </label>
+              <button
+                className="mt-2 rounded-md bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+                type="submit"
+              >
+                Zaloguj się
+              </button>
+            </form>
+          ) : null}
         </div>
       </div>
     </header>
