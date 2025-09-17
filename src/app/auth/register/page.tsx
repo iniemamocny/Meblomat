@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -22,7 +22,7 @@ function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const invitationToken = searchParams?.get("invitation") ?? undefined;
-  const forcedAccountType: AccountType | undefined = invitationToken ? "client" : undefined;
+  const forcedAccountType: AccountType | undefined = invitationToken ? "carpenter" : undefined;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accountType, setAccountType] = useState<AccountType>(forcedAccountType ?? "client");
@@ -283,7 +283,27 @@ export default function RegisterPage() {
           Register with your email address and we&apos;ll send a confirmation link.
         </p>
       </div>
-      <SignUpForm supabase={supabase} />
+      <Suspense
+        fallback={
+          <div className="space-y-4" aria-hidden>
+            <div className="space-y-2">
+              <div className="h-4 w-24 rounded bg-black/10 dark:bg-white/10" />
+              <div className="h-10 w-full rounded-md bg-black/10 dark:bg-white/10" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-32 rounded bg-black/10 dark:bg-white/10" />
+              <div className="h-10 w-full rounded-md bg-black/10 dark:bg-white/10" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-36 rounded bg-black/10 dark:bg-white/10" />
+              <div className="h-20 w-full rounded-md bg-black/10 dark:bg-white/10" />
+            </div>
+            <div className="h-10 w-full rounded-md bg-black/10 dark:bg-white/10" />
+          </div>
+        }
+      >
+        <SignUpForm supabase={supabase} />
+      </Suspense>
       <p className="text-sm/6 text-black/60 dark:text-white/60">
         Already have an account?{" "}
         <Link className="font-semibold text-black dark:text-white" href="/auth/login">
