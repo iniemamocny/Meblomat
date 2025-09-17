@@ -1,38 +1,79 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { VerificationHandler } from "@/components/auth/VerificationHandler";
-import { getSupabaseConfig } from "@/lib/env";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
-type VerifyPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
-};
+export default function VerifyPage() {
+  const router = useRouter();
+  const isSupabaseConfigured = isSupabaseConfiguredOnClient();
+  const [verificationParams, setVerificationParams] = useState({
+    code: null as string | null,
+    tokenHash: null as string | null,
+    type: null as string | null,
+  });
+  const [paramsLoaded, setParamsLoaded] = useState(false);
 
-export default async function VerifyPage({ searchParams }: VerifyPageProps) {
-  if (!getSupabaseConfig()) {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    setVerificationParams({
+      code: params.get("code"),
+      tokenHash: params.get("token_hash"),
+      type: params.get("type"),
+    });
+    setParamsLoaded(true);
+  }, []);
+
+  const { code, tokenHash, type } = verificationParams;
+  const hasVerificationPayload = Boolean(type && (code || tokenHash));
+  const supabase = useMemo(
+    () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
+    [isSupabaseConfigured],
+  );
+
+  useEffect(() => {
+    if (!supabase || !paramsLoaded || hasVerificationPayload) {
+      return;
+    }
+
+    let active = true;
+
+    const checkSession = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!active) {
+        return;
+      }
+
+      if (user) {
+        router.replace("/dashboard");
+      }
+    };
+
+    checkSession().catch(() => {
+      // Ignore errors and continue to render the verification form.
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [hasVerificationPayload, paramsLoaded, router, supabase]);
+
+  if (!isSupabaseConfigured) {
     return (
       <SupabaseEnvWarning description="Add your Supabase credentials to complete email verification flows." />
     );
-  }
-
-  const codeParam = searchParams?.code;
-  const tokenHashParam = searchParams?.token_hash;
-  const typeParam = searchParams?.type;
-  const code = typeof codeParam === "string" ? codeParam : null;
-  const tokenHash =
-    typeof tokenHashParam === "string" ? tokenHashParam : null;
-  const type = typeof typeParam === "string" ? typeParam : null;
-  const hasVerificationPayload = Boolean(type && (code || tokenHash));
-
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user && !hasVerificationPayload) {
-    redirect("/dashboard");
   }
 
   return (

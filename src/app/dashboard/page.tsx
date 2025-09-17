@@ -1,9 +1,12 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
-import { getSupabaseConfig } from "@/lib/env";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 type ProfileRow = {
   subscription_expires_at: string | null;
@@ -36,8 +39,79 @@ function formatDateTime(value: Date | null) {
   }).format(value);
 }
 
-export default async function DashboardPage() {
-  if (!getSupabaseConfig()) {
+export default function DashboardPage() {
+  const router = useRouter();
+  const isSupabaseConfigured = isSupabaseConfiguredOnClient();
+  const supabase = useMemo(
+    () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
+    [isSupabaseConfigured],
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    let active = true;
+
+    const loadProfile = async () => {
+      setIsLoading(true);
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!active) {
+        return;
+      }
+
+      if (userError || !user) {
+        router.replace("/auth/login");
+        return;
+      }
+
+      setUserEmail(user.email ?? null);
+
+      const { data: profile, error: profileFetchError } = await supabase
+        .from("profiles")
+        .select("subscription_expires_at")
+        .eq("id", user.id)
+        .maybeSingle<ProfileRow>();
+
+      if (!active) {
+        return;
+      }
+
+      if (profileFetchError) {
+        setProfileError(true);
+        setSubscriptionExpiresAt(null);
+      } else {
+        setProfileError(false);
+        setSubscriptionExpiresAt(profile?.subscription_expires_at ?? null);
+      }
+
+      setIsLoading(false);
+    };
+
+    loadProfile().catch(() => {
+      if (!active) {
+        return;
+      }
+
+      router.replace("/auth/login");
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [router, supabase]);
+
+  if (!isSupabaseConfigured) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-16">
         <SupabaseEnvWarning description="Add your Supabase credentials to load account and subscription details." />
@@ -45,23 +119,20 @@ export default async function DashboardPage() {
     );
   }
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/auth/login");
+  if (isLoading) {
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-16">
+        <header className="space-y-2">
+          <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-base text-black/60 dark:text-white/60">
+            Loading your account details…
+          </p>
+        </header>
+      </div>
+    );
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("subscription_expires_at")
-    .eq("id", user.id)
-    .maybeSingle<ProfileRow>();
-
-  const expirationDate = parseExpiration(profile?.subscription_expires_at);
+  const expirationDate = parseExpiration(subscriptionExpiresAt);
   const now = new Date();
 
   let warning: { title: string; description: string } | null = null;
@@ -99,7 +170,7 @@ export default async function DashboardPage() {
       <header className="space-y-2">
         <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-base text-black/60 dark:text-white/60">
-          Welcome back{user.email ? `, ${user.email}` : ""}.
+          Welcome back{userEmail ? `, ${userEmail}` : ""}.
         </p>
       </header>
 
@@ -116,7 +187,7 @@ export default async function DashboardPage() {
           <dl className="mt-4 space-y-4 text-sm/6 text-black/70 dark:text-white/70">
             <div>
               <dt className="font-medium text-black dark:text-white">Email</dt>
-              <dd className="mt-1 break-all">{user.email ?? "Unknown"}</dd>
+              <dd className="mt-1 break-all">{userEmail ?? "Unknown"}</dd>
             </div>
             <div>
               <dt className="font-medium text-black dark:text-white">Subscription expires</dt>

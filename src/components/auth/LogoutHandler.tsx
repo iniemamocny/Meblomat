@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
+import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 type Props = {
@@ -11,9 +12,17 @@ type Props = {
 
 export function LogoutHandler({ redirectPath = "/auth/login" }: Props) {
   const router = useRouter();
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const isSupabaseConfigured = isSupabaseConfiguredOnClient();
+  const supabase = useMemo(
+    () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
+    [isSupabaseConfigured],
+  );
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
     let active = true;
 
     const signOut = async () => {

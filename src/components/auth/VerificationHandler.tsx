@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthError } from "@supabase/supabase-js";
 
+import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 type SupportedVerificationType =
@@ -47,11 +48,19 @@ export function VerificationHandler({
   redirectPath = "/dashboard",
 }: Props) {
   const router = useRouter();
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const isSupabaseConfigured = isSupabaseConfiguredOnClient();
+  const supabase = useMemo(
+    () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
+    [isSupabaseConfigured],
+  );
   const [status, setStatus] = useState<"idle" | "processing" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
     if (!type) {
       return;
     }
@@ -115,7 +124,7 @@ export function VerificationHandler({
     };
   }, [code, redirectPath, router, supabase, tokenHash, type]);
 
-  if ((!code && !tokenHash) || !type) {
+  if (!supabase || ((!code && !tokenHash) || !type)) {
     return null;
   }
 

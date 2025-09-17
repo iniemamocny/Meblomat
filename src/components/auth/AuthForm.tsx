@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 
+import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 type AuthView =
@@ -33,7 +34,11 @@ export function AuthForm({
   disableEmailRedirect = false,
 }: Props) {
   const router = useRouter();
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const isSupabaseConfigured = isSupabaseConfiguredOnClient();
+  const supabase = useMemo(
+    () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
+    [isSupabaseConfigured],
+  );
   const [emailRedirectUrl, setEmailRedirectUrl] = useState<string | undefined>();
 
   useEffect(() => {
@@ -55,6 +60,10 @@ export function AuthForm({
   }, [disableEmailRedirect, emailRedirectPath]);
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         if (redirectPath) {
@@ -72,6 +81,10 @@ export function AuthForm({
       data.subscription.unsubscribe();
     };
   }, [redirectPath, router, supabase]);
+
+  if (!supabase) {
+    return null;
+  }
 
   return (
     <div className={className}>
