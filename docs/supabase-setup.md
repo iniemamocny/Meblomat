@@ -10,7 +10,8 @@ Run the full script in the Supabase SQL editor (or apply it through the CLI as d
 
 - create the `public.profiles` table linked to `auth.users`,
 - enable row level security and policies so a user can read their own profile data,
-- add triggers that default and guard the `subscription_expires_at` column, and
+- store default avatar metadata for every profile,
+- add triggers that default and guard the `subscription_expires_at` column and avatar metadata, and
 - insert a profile automatically whenever a new auth user is created.
 
 ```sql
@@ -19,8 +20,16 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   subscription_expires_at timestamptz not null,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
+  updated_at timestamptz not null default timezone('utc', now()),
+  avatar_type text not null default 'icon',
+  avatar_path text not null default 'user'
 );
+
+alter table public.profiles
+  add column if not exists avatar_type text not null default 'icon';
+
+alter table public.profiles
+  add column if not exists avatar_path text not null default 'user';
 
 alter table public.profiles enable row level security;
 
@@ -57,6 +66,14 @@ begin
   if new.subscription_expires_at is null then
     -- Give each account an initial 14-day trial period.
     new.subscription_expires_at := timezone('utc', now()) + interval '14 days';
+  end if;
+
+  if new.avatar_type is null then
+    new.avatar_type := 'icon';
+  end if;
+
+  if new.avatar_path is null then
+    new.avatar_path := 'user';
   end if;
 
   return new;
@@ -134,6 +151,48 @@ If you prefer using migrations:
    supabase db push
    ```
 
-The CLI will run every SQL file in [`supabase/migrations`](../supabase/migrations) against the linked project.
+The CLI will run every SQL file in [`supabase/migrations`](../supabase/migrations) (including avatar-related migrations such as `0002_add_profile_avatar.sql`) against the linked project.
 
 Once the script is applied, create an account through the app. A matching `public.profiles` row will be created automatically with a trial `subscription_expires_at`, letting the dashboard render the subscription warning banners correctly.
+
+## 3. Provision the Storage bucket for avatars
+
+Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files:
+
+```sql
+select storage.create_bucket('avatars', jsonb_build_object('public', false));
+
+create policy if not exists "Avatar files are readable by their owner"
+  on storage.objects for select
+  using (
+    bucket_id = 'avatars'
+    and auth.uid() = owner
+  );
+
+create policy if not exists "Avatar files are uploaded by their owner"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'avatars'
+    and auth.uid() = owner
+  );
+
+create policy if not exists "Avatar files are replaceable by their owner"
+  on storage.objects for update
+  using (
+    bucket_id = 'avatars'
+    and auth.uid() = owner
+  )
+  with check (
+    bucket_id = 'avatars'
+    and auth.uid() = owner
+  );
+
+create policy if not exists "Avatar files are removable by their owner"
+  on storage.objects for delete
+  using (
+    bucket_id = 'avatars'
+    and auth.uid() = owner
+  );
+```
+
+> ℹ️ If you rerun the SQL after the bucket already exists, Supabase will ignore the `create_bucket` call. The `if not exists` guards keep the Storage policies idempotent as well.
