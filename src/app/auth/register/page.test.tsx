@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParamsMock,
 }));
 
-import { SignUpForm } from "./page";
+import { SignUpForm } from "./SignUpForm";
 
 describe("SignUpForm", () => {
   beforeEach(() => {
