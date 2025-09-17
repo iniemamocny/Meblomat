@@ -1,47 +1,93 @@
-import type { ReactElement, ReactNode } from "react";
-import { Children, isValidElement } from "react";
+/* @vitest-environment jsdom */
+
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { redirectMock, getSupabaseConfigMock, getUserMock, createSupabaseServerClientMock } = vi.hoisted(() => {
+type VerificationHandlerProps = {
+  code?: string | null;
+  tokenHash?: string | null;
+  type?: string | null;
+  redirectPath?: string;
+};
+
+const {
+  redirectMock,
+  replaceMock,
+  refreshMock,
+  isSupabaseConfiguredMock,
+  createSupabaseBrowserClientMock,
+  getUserMock,
+  verificationHandlerMock,
+} = vi.hoisted(() => {
+  const redirect = vi.fn();
+  const replace = vi.fn();
+  const refresh = vi.fn();
+  const isSupabaseConfigured = vi.fn();
   const getUser = vi.fn();
+  const supabaseClient = { auth: { getUser } };
+  const createSupabaseBrowserClient = vi.fn(() => supabaseClient);
+  const verificationHandler = vi.fn();
 
   return {
-    redirectMock: vi.fn(() => {
-      throw new Error("REDIRECT");
-    }),
-    getSupabaseConfigMock: vi.fn(),
+    redirectMock: redirect,
+    replaceMock: replace,
+    refreshMock: refresh,
+    isSupabaseConfiguredMock: isSupabaseConfigured,
+    createSupabaseBrowserClientMock: createSupabaseBrowserClient,
     getUserMock: getUser,
-    createSupabaseServerClientMock: vi.fn(() => ({
-      auth: {
-        getUser,
-      },
-    })),
+    verificationHandlerMock: verificationHandler,
   };
 });
 
 vi.mock("next/navigation", () => ({
   redirect: redirectMock,
-  useRouter: vi.fn(() => ({
-    replace: vi.fn(),
-    refresh: vi.fn(),
-  })),
+  useRouter: () => ({
+    replace: replaceMock,
+    refresh: refreshMock,
+  }),
 }));
 
-vi.mock("@/lib/env", () => ({
-  getSupabaseConfig: getSupabaseConfigMock,
+vi.mock("@/lib/envClient", () => ({
+  isSupabaseConfiguredOnClient: isSupabaseConfiguredMock,
 }));
 
-vi.mock("@/lib/supabaseServer", () => ({
-  createSupabaseServerClient: createSupabaseServerClientMock,
+vi.mock("@/lib/supabaseClient", () => ({
+  createSupabaseBrowserClient: createSupabaseBrowserClientMock,
 }));
 
-import { VerificationHandler } from "@/components/auth/VerificationHandler";
+vi.mock("@/components/auth/VerificationHandler", () => ({
+  VerificationHandler: (props: VerificationHandlerProps) => {
+    verificationHandlerMock(props);
+    return <div data-testid="verification-handler" />;
+  },
+}));
+
+vi.mock("@/components/auth/AuthForm", () => ({
+  AuthForm: () => <div data-testid="auth-form" />,
+}));
+
 import VerifyPage from "./page";
 
 describe("VerifyPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getSupabaseConfigMock.mockReturnValue({ url: "https://example.com" });
+    window.history.replaceState(null, "", "/");
+    isSupabaseConfiguredMock.mockReturnValue(true);
+    getUserMock.mockResolvedValue({ data: { user: null } });
+  });
+
+  it("renders a Supabase configuration warning when env vars are missing", () => {
+    isSupabaseConfiguredMock.mockReturnValue(false);
+
+    render(<VerifyPage />);
+
+    expect(
+      screen.queryByText(
+        "Add your Supabase credentials to complete email verification flows.",
+      ),
+    ).not.toBeNull();
+    expect(createSupabaseBrowserClientMock).not.toHaveBeenCalled();
+    expect(verificationHandlerMock).not.toHaveBeenCalled();
   });
 
   it("redirects signed-in users when no verification payload is present", async () => {
@@ -49,84 +95,42 @@ describe("VerifyPage", () => {
       data: { user: { id: "user-123" } },
     });
 
-    await expect(VerifyPage({ searchParams: {} })).rejects.toThrowError("REDIRECT");
+    render(<VerifyPage />);
 
-    expect(redirectMock).toHaveBeenCalledWith("/dashboard");
+    await waitFor(() => {
+      expect(getUserMock).toHaveBeenCalledTimes(1);
+      expect(replaceMock).toHaveBeenCalledWith("/dashboard");
+    });
+
+    expect(verificationHandlerMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        code: null,
+        tokenHash: null,
+        type: null,
+      }),
+    );
   });
 
-  it("renders the verification handler for email change links when the user is already signed in", async () => {
-    getUserMock.mockResolvedValue({
-      data: { user: { id: "user-123" } },
+  it("renders the verification handler when the verification params are present", async () => {
+    window.history.pushState(
+      null,
+      "",
+      "/auth/verify?code=test-token&type=email_change",
+    );
+
+    render(<VerifyPage />);
+
+    await waitFor(() => {
+      expect(verificationHandlerMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "test-token",
+          tokenHash: null,
+          type: "email_change",
+        }),
+      );
     });
 
-    const element = await VerifyPage({
-      searchParams: {
-        code: "test-token",
-        type: "email_change",
-      },
-    });
-
-    expect(redirectMock).not.toHaveBeenCalled();
-
-    const verificationElement = findVerificationHandler(element);
-    expect(verificationElement).not.toBeNull();
-    expect(verificationElement?.props.code).toBe("test-token");
-    expect(verificationElement?.props.tokenHash).toBeNull();
-    expect(verificationElement?.props.type).toBe("email_change");
-  });
-
-  it("renders the verification handler when only a token hash is provided", async () => {
-    getUserMock.mockResolvedValue({
-      data: { user: { id: "user-123" } },
-    });
-
-    const element = await VerifyPage({
-      searchParams: {
-        token_hash: "test-token-hash",
-        type: "email_change",
-      },
-    });
-
-    expect(redirectMock).not.toHaveBeenCalled();
-
-    const verificationElement = findVerificationHandler(element);
-    expect(verificationElement).not.toBeNull();
-    expect(verificationElement?.props.code).toBeNull();
-    expect(verificationElement?.props.tokenHash).toBe("test-token-hash");
-    expect(verificationElement?.props.type).toBe("email_change");
+    expect(getUserMock).not.toHaveBeenCalled();
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 });
-
-function findVerificationHandler(node: ReactNode): ReactElement | null {
-  if (!node) {
-    return null;
-  }
-
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const match = findVerificationHandler(child);
-      if (match) {
-        return match;
-      }
-    }
-    return null;
-  }
-
-  if (!isValidElement(node)) {
-    return null;
-  }
-
-  if (node.type === VerificationHandler) {
-    return node;
-  }
-
-  const children = Children.toArray(node.props?.children ?? []);
-  for (const child of children) {
-    const match = findVerificationHandler(child);
-    if (match) {
-      return match;
-    }
-  }
-
-  return null;
-}
