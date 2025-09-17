@@ -1,3 +1,4 @@
+import AppHeader from "@/components/layout/AppHeader";
 import Link from "next/link";
 import type { Metadata } from "next";
 import "./globals.css";
@@ -18,36 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans bg-[var(--background)] text-[var(--foreground)] antialiased">
         <div className="flex min-h-screen flex-col">
-          <header className="border-b border-black/10 bg-white/80 px-4 py-4 backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/80">
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-6">
-              <Link
-                className="text-lg font-semibold tracking-tight text-black transition hover:text-black/70 dark:text-white dark:hover:text-white/80"
-                href="/"
-              >
-                Meblomat
-              </Link>
-              <nav className="flex items-center gap-3 text-sm font-medium text-black/70 dark:text-white/70">
-                <Link
-                  className="rounded-full px-3 py-1 transition hover:bg-black/5 dark:hover:bg-white/10"
-                  href="/auth/login"
-                >
-                  Login
-                </Link>
-                <Link
-                  className="rounded-full px-3 py-1 transition hover:bg-black/5 dark:hover:bg-white/10"
-                  href="/auth/register"
-                >
-                  Register
-                </Link>
-                <Link
-                  className="rounded-full px-3 py-1 transition hover:bg-black/5 dark:hover:bg-white/10"
-                  href="/dashboard"
-                >
-                  Dashboard
-                </Link>
-              </nav>
-            </div>
-          </header>
+          <AppHeader />
           <main className="flex flex-1 flex-col">{children}</main>
           <footer className="border-t border-black/10 bg-white/80 px-4 py-6 text-sm text-black/60 dark:border-white/10 dark:bg-neutral-900/80 dark:text-white/60">
             <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
