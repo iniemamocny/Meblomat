@@ -6,6 +6,11 @@ import type { User } from "@supabase/supabase-js";
 
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import {
+  DEFAULT_AVATAR_ID,
+  getAvatarPresetIcon,
+  type AvatarType,
+} from "@/lib/avatar";
 
 import { UserAvatar } from "./UserAvatar";
 
@@ -24,7 +29,8 @@ const navigationLinks: NavigationLink[] = [
 ];
 
 type ProfileRow = {
-  avatar_url?: string | null;
+  avatar_type: AvatarType | null;
+  avatar_path: string | null;
 };
 
 export default function AppHeader() {
@@ -35,11 +41,13 @@ export default function AppHeader() {
   );
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
       setUser(null);
       setProfile(null);
+      setAvatarImageUrl(null);
       return;
     }
 
@@ -48,7 +56,7 @@ export default function AppHeader() {
     const loadProfile = async (userId: string) => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("avatar_type, avatar_path")
         .eq("id", userId)
         .maybeSingle<ProfileRow>();
 
@@ -58,10 +66,14 @@ export default function AppHeader() {
 
       if (error) {
         setProfile(null);
+        setAvatarImageUrl(null);
         return;
       }
 
       setProfile(data ?? null);
+      if (!data) {
+        setAvatarImageUrl(null);
+      }
     };
 
     const syncUser = async () => {
@@ -77,6 +89,7 @@ export default function AppHeader() {
       if (error || !currentUser) {
         setUser(null);
         setProfile(null);
+        setAvatarImageUrl(null);
         return;
       }
 
@@ -91,6 +104,7 @@ export default function AppHeader() {
 
       setUser(null);
       setProfile(null);
+      setAvatarImageUrl(null);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -108,9 +122,11 @@ export default function AppHeader() {
           }
 
           setProfile(null);
+          setAvatarImageUrl(null);
         });
       } else {
         setProfile(null);
+        setAvatarImageUrl(null);
       }
     });
 
@@ -120,13 +136,84 @@ export default function AppHeader() {
     };
   }, [supabase]);
 
+  const avatarPath = profile?.avatar_path ?? null;
+  const avatarType = profile?.avatar_type ?? null;
+
+  useEffect(() => {
+    if (!supabase) {
+      setAvatarImageUrl(null);
+      return;
+    }
+
+    if (avatarType !== "upload" || !avatarPath) {
+      setAvatarImageUrl(null);
+      return;
+    }
+
+    let active = true;
+
+    supabase.storage
+      .from("avatars")
+      .createSignedUrl(avatarPath, 60 * 60 * 24 * 7)
+      .then(({ data, error }) => {
+        if (!active) {
+          return;
+        }
+
+        if (error) {
+          setAvatarImageUrl(null);
+        } else {
+          setAvatarImageUrl(data?.signedUrl ?? null);
+        }
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
+        setAvatarImageUrl(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [avatarPath, avatarType, supabase]);
+
+  useEffect(() => {
+    if (!supabase || !user?.id) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`profile-avatar-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          setProfile((payload.new as ProfileRow) ?? null);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id]);
+
   const isAuthenticated = Boolean(user);
-  const avatarUrl =
-    profile?.avatar_url ??
-    (typeof user?.user_metadata?.avatar_url === "string"
-      ? (user.user_metadata.avatar_url as string)
-      : null);
-  const avatarFallback = user?.email?.[0]?.toUpperCase() ?? undefined;
+  const presetIcon = getAvatarPresetIcon(avatarPath ?? DEFAULT_AVATAR_ID);
+  const avatarFallbackIcon = (
+    <span aria-hidden="true" className="text-base">
+      {presetIcon}
+    </span>
+  );
+  const resolvedAvatarUrl = avatarType === "upload" ? avatarImageUrl : null;
+  const avatarInitial = user?.email?.[0]?.toUpperCase() ?? undefined;
 
   return (
     <header className="border-b border-black/10 bg-white/80 px-4 py-4 backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/80">
@@ -160,7 +247,11 @@ export default function AppHeader() {
         <div className="flex flex-col items-end gap-3 text-sm font-medium">
           {isAuthenticated ? (
             <Link href="/dashboard" className="rounded-full">
-              <UserAvatar imageUrl={avatarUrl} initials={avatarFallback} />
+              <UserAvatar
+                imageUrl={resolvedAvatarUrl}
+                fallbackIcon={avatarFallbackIcon}
+                initials={avatarInitial}
+              />
             </Link>
           ) : (
             <div className="flex items-center gap-3">
