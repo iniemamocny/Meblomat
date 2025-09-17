@@ -84,11 +84,17 @@ function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) 
     setIsSubmitting(true);
 
     try {
+      const signUpMetadata = {
+        pending_account_type: accountType,
+        ...(invitationToken ? { pending_invitation_token: invitationToken } : {}),
+      };
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: emailRedirectUrl,
+          data: signUpMetadata,
         },
       });
 
@@ -97,9 +103,15 @@ function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) 
         return;
       }
 
+      const session = data.session;
       const user = data.user;
 
-      if (user) {
+      if (session) {
+        if (!user) {
+          setFormError("Registration failed.");
+          return;
+        }
+
         const { error: profileError } = await supabase
           .from("profiles")
           .update({ account_type: accountType })
@@ -120,9 +132,6 @@ function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) 
             return;
           }
         }
-      }
-
-      if (data.session) {
         if (redirectPath) {
           router.replace(redirectPath);
         }
@@ -237,6 +246,8 @@ function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) 
     </form>
   );
 }
+
+export { SignUpForm };
 
 export default function RegisterPage() {
   const router = useRouter();
