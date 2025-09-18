@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState, useId } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -123,6 +123,7 @@ export default function DashboardPage() {
   const [projectSubmitSuccess, setProjectSubmitSuccess] =
     useState<string | null>(null);
   const [isProjectSubmitting, setIsProjectSubmitting] = useState(false);
+  const [areProjectsOpen, setAreProjectsOpen] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -470,7 +471,9 @@ export default function DashboardPage() {
       }
 
       if (!projectCarpenterId) {
-        setProjectSubmitError("Choose a carpenter before submitting your project.");
+        setProjectSubmitError(
+          "Wybierz stolarza przed wysłaniem briefu projektu.",
+        );
         return;
       }
 
@@ -478,12 +481,14 @@ export default function DashboardPage() {
       const normalizedDetails = projectDetails.trim();
 
       if (!normalizedTitle) {
-        setProjectSubmitError("Provide a short project title.");
+        setProjectSubmitError("Podaj krótki tytuł projektu.");
         return;
       }
 
       if (!normalizedDetails) {
-        setProjectSubmitError("Describe your project so the carpenter can respond.");
+        setProjectSubmitError(
+          "Opisz swój projekt, aby stolarz mógł odpowiedzieć.",
+        );
         return;
       }
 
@@ -501,13 +506,15 @@ export default function DashboardPage() {
 
         setProjectTitle("");
         setProjectDetails("");
-        setProjectSubmitSuccess("Your project brief has been shared with the carpenter.");
+        setProjectSubmitSuccess(
+          "Brief projektu został wysłany do stolarza.",
+        );
         await refreshClientData();
       } catch (error) {
         setProjectSubmitError(
           error instanceof Error
             ? error.message
-            : "We couldn't submit your project. Please try again.",
+            : "Nie udało się wysłać projektu. Spróbuj ponownie.",
         );
       } finally {
         setIsProjectSubmitting(false);
@@ -568,6 +575,8 @@ export default function DashboardPage() {
     return map;
   }, [assignedCarpenter, availableCarpenters]);
   const canSubmitProject = Boolean(projectCarpenterId);
+  const rawProjectsId = useId();
+  const projectsContentId = `client-projects-${rawProjectsId.replace(/:/g, "")}`;
 
   if (!isSupabaseConfigured) {
     return (
@@ -979,141 +988,172 @@ export default function DashboardPage() {
             </article>
           ) : null}
 
-          <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-            <h2 className="text-lg font-semibold">Submit a project brief</h2>
-            <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-              Share the details of your project and we&apos;ll notify the assigned carpenter instantly.
-            </p>
-            <form className="mt-4 space-y-4" onSubmit={handleProjectSubmit} noValidate>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-black dark:text-white"
-                  htmlFor="project-carpenter"
-                >
-                  Carpenter
-                </label>
-                <select
-                  id="project-carpenter"
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
-                  value={projectCarpenterId ?? ""}
-                  onChange={(event) => setProjectCarpenterId(event.target.value || null)}
-                  disabled={Boolean(assignedCarpenter)}
-                >
-                  {assignedCarpenter ? (
-                    <option value={assignedCarpenter.carpenterId}>
-                      {assignedCarpenter.carpenterEmail ?? "Assigned carpenter"}
-                    </option>
-                  ) : (
-                    <>
-                      <option value="">
-                        Select a carpenter
-                      </option>
-                      {availableCarpenters.map((carpenter) => (
-                        <option key={carpenter.carpenterId} value={carpenter.carpenterId}>
-                          {carpenter.carpenterEmail ?? carpenter.carpenterId}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-black dark:text-white"
-                  htmlFor="project-title"
-                >
-                  Project title
-                </label>
-                <input
-                  id="project-title"
-                  type="text"
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
-                  value={projectTitle}
-                  onChange={(event) => setProjectTitle(event.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-black dark:text-white"
-                  htmlFor="project-details"
-                >
-                  Project details
-                </label>
-                <textarea
-                  id="project-details"
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
-                  rows={5}
-                  value={projectDetails}
-                  onChange={(event) => setProjectDetails(event.target.value)}
-                  required
-                />
-              </div>
-
-              {projectSubmitError ? (
-                <p className="text-sm text-red-600 dark:text-red-400">{projectSubmitError}</p>
-              ) : null}
-
-              {projectSubmitSuccess ? (
-                <p className="text-sm text-emerald-600 dark:text-emerald-300">{projectSubmitSuccess}</p>
-              ) : null}
-
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/40 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/30 dark:disabled:bg-white/40"
-                disabled={isProjectSubmitting || !canSubmitProject}
+          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black transition hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:text-white dark:hover:bg-white/10 dark:focus-visible:ring-white/20"
+              aria-expanded={areProjectsOpen}
+              aria-controls={projectsContentId}
+              onClick={() => setAreProjectsOpen((open) => !open)}
+            >
+              <span>Moje projekty</span>
+              <svg
+                aria-hidden="true"
+                className={`size-4 shrink-0 text-black/60 transition ${areProjectsOpen ? "rotate-180" : ""} dark:text-white/60`}
+                fill="none"
+                viewBox="0 0 20 20"
               >
-                {isProjectSubmitting ? "Sending brief…" : "Send project brief"}
-              </button>
-            </form>
-          </article>
-
-          <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-            <h2 className="text-lg font-semibold">Your projects</h2>
-            {projects.length > 0 ? (
-              <ul className="mt-4 space-y-4">
-                {projects.map((project) => {
-                  const submitted = parseDate(project.submittedAt);
-                  const carpenterEmail = knownCarpenters.get(project.carpenterId) ?? project.carpenterId;
-
-                  return (
-                    <li
-                      key={project.id}
-                      className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5"
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </button>
+            <div
+              id={projectsContentId}
+              aria-hidden={!areProjectsOpen}
+              className={`space-y-6 border-t border-black/10 px-6 py-6 dark:border-white/10 ${areProjectsOpen ? "" : "hidden"}`}
+            >
+              <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                <h2 className="text-lg font-semibold">Wyślij brief projektu</h2>
+                <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                  Podziel się szczegółami projektu, a my natychmiast powiadomimy przydzielonego stolarza.
+                </p>
+                <form className="mt-4 space-y-4" onSubmit={handleProjectSubmit} noValidate>
+                  <div className="space-y-2">
+                    <label
+                      className="text-sm font-medium text-black dark:text-white"
+                      htmlFor="project-carpenter"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-black dark:text-white">
-                            {project.title}
+                      Stolarz
+                    </label>
+                    <select
+                      id="project-carpenter"
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
+                      value={projectCarpenterId ?? ""}
+                      onChange={(event) => setProjectCarpenterId(event.target.value || null)}
+                      disabled={Boolean(assignedCarpenter)}
+                    >
+                      {assignedCarpenter ? (
+                        <option value={assignedCarpenter.carpenterId}>
+                          {assignedCarpenter.carpenterEmail ?? "Przydzielony stolarz"}
+                        </option>
+                      ) : (
+                        <>
+                          <option value="">
+                            Wybierz stolarza
+                          </option>
+                          {availableCarpenters.map((carpenter) => (
+                            <option key={carpenter.carpenterId} value={carpenter.carpenterId}>
+                              {carpenter.carpenterEmail ?? carpenter.carpenterId}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      className="text-sm font-medium text-black dark:text-white"
+                      htmlFor="project-title"
+                    >
+                      Tytuł projektu
+                    </label>
+                    <input
+                      id="project-title"
+                      type="text"
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
+                      value={projectTitle}
+                      onChange={(event) => setProjectTitle(event.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      className="text-sm font-medium text-black dark:text-white"
+                      htmlFor="project-details"
+                    >
+                      Szczegóły projektu
+                    </label>
+                    <textarea
+                      id="project-details"
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
+                      rows={5}
+                      value={projectDetails}
+                      onChange={(event) => setProjectDetails(event.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {projectSubmitError ? (
+                    <p className="text-sm text-red-600 dark:text-red-400">{projectSubmitError}</p>
+                  ) : null}
+
+                  {projectSubmitSuccess ? (
+                    <p className="text-sm text-emerald-600 dark:text-emerald-300">{projectSubmitSuccess}</p>
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/40 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/30 dark:disabled:bg-white/40"
+                    disabled={isProjectSubmitting || !canSubmitProject}
+                  >
+                    {isProjectSubmitting ? "Wysyłanie briefu…" : "Wyślij brief"}
+                  </button>
+                </form>
+              </article>
+
+              <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                <h2 className="text-lg font-semibold">Twoje projekty</h2>
+                {projects.length > 0 ? (
+                  <ul className="mt-4 space-y-4">
+                    {projects.map((project) => {
+                      const submitted = parseDate(project.submittedAt);
+                      const carpenterEmail = knownCarpenters.get(project.carpenterId) ?? project.carpenterId;
+
+                      return (
+                        <li
+                          key={project.id}
+                          className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5"
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-black dark:text-white">
+                                {project.title}
+                              </p>
+                              <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
+                                Stolarz: {carpenterEmail ?? "Nieznany"}
+                              </p>
+                              {project.details ? (
+                                <p className="mt-1 text-sm/6 text-black/70 dark:text-white/70">
+                                  {project.details}
+                                </p>
+                              ) : null}
+                            </div>
+                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">
+                              {project.status.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
+                            Wysłano {formatDateTime(submitted)}
                           </p>
-                          <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
-                            Carpenter: {carpenterEmail ?? "Unknown"}
-                          </p>
-                          {project.details ? (
-                            <p className="mt-1 text-sm/6 text-black/70 dark:text-white/70">
-                              {project.details}
-                            </p>
-                          ) : null}
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">
-                          {project.status.replace(/_/g, " ")}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
-                        Submitted {formatDateTime(submitted)}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                You haven&apos;t submitted any projects yet. Use the form above to share your first idea.
-              </p>
-            )}
-          </article>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
+                    Nie przesłałeś jeszcze żadnych projektów. Użyj formularza powyżej, aby podzielić się pierwszym pomysłem.
+                  </p>
+                )}
+              </article>
+            </div>
+          </div>
         </section>
       ) : null}
     </div>
