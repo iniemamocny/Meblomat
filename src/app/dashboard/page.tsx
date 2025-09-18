@@ -558,6 +558,15 @@ export default function DashboardPage() {
 
     return grouped;
   }, [projects]);
+  const clientsById = useMemo(() => {
+    const map = new Map<string, string | null>();
+
+    for (const client of carpenterClients) {
+      map.set(client.clientId, client.clientEmail ?? null);
+    }
+
+    return map;
+  }, [carpenterClients]);
   const knownCarpenters = useMemo(() => {
     const map = new Map<string, string | null>();
 
@@ -766,175 +775,359 @@ export default function DashboardPage() {
 
       {isCarpenterView ? (
         <section className="space-y-6">
-          <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-            <h2 className="text-lg font-semibold">Invite a client</h2>
-            <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-              Generate a secure link that connects new clients to your workspace.
-            </p>
-            <form className="mt-4 space-y-4" onSubmit={handleInvitationSubmit} noValidate>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-black dark:text-white"
-                  htmlFor="invitation-email"
-                >
-                  Client email
-                </label>
-                <input
-                  id="invitation-email"
-                  type="email"
-                  autoComplete="email"
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
-                  value={invitationEmail}
-                  onChange={(event) => setInvitationEmail(event.target.value)}
-                  required
-                />
-              </div>
-
-              {invitationError ? (
-                <p className="text-sm text-red-600 dark:text-red-400">{invitationError}</p>
-              ) : null}
-
-              {invitationLink ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-400/10 dark:text-emerald-100">
-                  <p className="text-sm font-medium">Share this link with your client:</p>
-                  <p className="mt-1 break-all font-mono text-sm">{invitationLink}</p>
-                </div>
-              ) : null}
-
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/40 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/30 dark:disabled:bg-white/40"
-                disabled={isInvitationSubmitting}
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" open>
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Moje projekty</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
               >
-                {isInvitationSubmitting ? "Generating link…" : "Generate invitation"}
-              </button>
-            </form>
-          </article>
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Invite a client</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Generate a secure link that connects new clients to your workspace.
+                  </p>
+                  <form className="mt-4 space-y-4" onSubmit={handleInvitationSubmit} noValidate>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium text-black dark:text-white"
+                        htmlFor="invitation-email"
+                      >
+                        Client email
+                      </label>
+                      <input
+                        id="invitation-email"
+                        type="email"
+                        autoComplete="email"
+                        className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
+                        value={invitationEmail}
+                        onChange={(event) => setInvitationEmail(event.target.value)}
+                        required
+                      />
+                    </div>
 
-          <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-            <h2 className="text-lg font-semibold">Pending invitations</h2>
-            <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-              Track outstanding invitations that are waiting to be accepted.
-            </p>
-            {pendingInvitations.length > 0 ? (
-              <ul className="mt-4 space-y-4">
-                {pendingInvitations.map((invitation) => {
-                  const expires = parseDate(invitation.expiresAt);
-                  const shareUrl = inviteBaseUrl
-                    ? `${inviteBaseUrl}/invite/${invitation.token}`
-                    : `/invite/${invitation.token}`;
+                    {invitationError ? (
+                      <p className="text-sm text-red-600 dark:text-red-400">{invitationError}</p>
+                    ) : null}
 
-                  return (
-                    <li
-                      key={invitation.token}
-                      className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 dark:border-white/10 dark:bg-white/5"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-black dark:text-white">
-                            {invitation.invitedEmail}
-                          </p>
-                          <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
-                            Expires {formatDateTime(expires)}
-                          </p>
-                        </div>
-                        <Link
-                          className="text-sm font-medium text-black underline-offset-4 hover:underline dark:text-white"
-                          href={`/invite/${invitation.token}`}
-                        >
-                          Open invite
-                        </Link>
+                    {invitationLink ? (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-400/10 dark:text-emerald-100">
+                        <p className="text-sm font-medium">Share this link with your client:</p>
+                        <p className="mt-1 break-all font-mono text-sm">{invitationLink}</p>
                       </div>
-                      <p className="mt-2 break-all text-xs font-mono text-black/60 dark:text-white/60">
-                        {shareUrl}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                You don&apos;t have any pending invitations. Generate a new link to start collaborating with a client.
-              </p>
-            )}
-          </article>
+                    ) : null}
 
-          <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-            <h2 className="text-lg font-semibold">Assigned clients</h2>
-            <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-              Review the clients connected to your workspace and see the latest briefs they have submitted.
-            </p>
-            {carpenterClients.length > 0 ? (
-              <ul className="mt-4 space-y-5">
-                {carpenterClients.map((client) => {
-                  const clientProjects = projectsByClient.get(client.clientId) ?? [];
-
-                  return (
-                    <li
-                      key={client.clientId}
-                      className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5"
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/40 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/30 dark:disabled:bg-white/40"
+                      disabled={isInvitationSubmitting}
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-black dark:text-white">
-                            {client.clientEmail ?? "Client"}
-                          </p>
-                          <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
-                            ID: {client.clientId}
-                          </p>
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-black/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-black/80 dark:bg-white/10 dark:text-white/80">
-                          {clientProjects.length} {clientProjects.length === 1 ? "project" : "projects"}
-                        </span>
-                      </div>
+                      {isInvitationSubmitting ? "Generating link…" : "Generate invitation"}
+                    </button>
+                  </form>
+                </article>
 
-                      {clientProjects.length > 0 ? (
-                        <ul className="mt-3 space-y-3">
-                          {clientProjects.map((project) => {
-                            const submitted = parseDate(project.submittedAt);
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Pending invitations</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Track outstanding invitations that are waiting to be accepted.
+                  </p>
+                  {pendingInvitations.length > 0 ? (
+                    <ul className="mt-4 space-y-4">
+                      {pendingInvitations.map((invitation) => {
+                        const expires = parseDate(invitation.expiresAt);
+                        const shareUrl = inviteBaseUrl
+                          ? `${inviteBaseUrl}/invite/${invitation.token}`
+                          : `/invite/${invitation.token}`;
 
-                            return (
-                              <li
-                                key={project.id}
-                                className="rounded-xl border border-black/10 bg-white/60 p-4 dark:border-white/10 dark:bg-neutral-900/60"
-                              >
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                  <div>
-                                    <p className="text-sm font-semibold text-black dark:text-white">
-                                      {project.title}
-                                    </p>
-                                    {project.details ? (
-                                      <p className="mt-1 text-sm/6 text-black/70 dark:text-white/70">
-                                        {project.details}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">
-                                    {project.status.replace(/_/g, " ")}
-                                  </span>
-                                </div>
-                                <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
-                                  Submitted {formatDateTime(submitted)}
+                        return (
+                          <li
+                            key={invitation.token}
+                            className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 dark:border-white/10 dark:bg-white/5"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-black dark:text-white">
+                                  {invitation.invitedEmail}
                                 </p>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : (
-                        <p className="mt-3 text-sm/6 text-black/60 dark:text-white/60">
-                          This client hasn&apos;t submitted any project briefs yet.
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                When clients accept your invitations they will appear here.
-              </p>
-            )}
-          </article>
+                                <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
+                                  Expires {formatDateTime(expires)}
+                                </p>
+                              </div>
+                              <Link
+                                className="text-sm font-medium text-black underline-offset-4 hover:underline dark:text-white"
+                                href={`/invite/${invitation.token}`}
+                              >
+                                Open invite
+                              </Link>
+                            </div>
+                            <p className="mt-2 break-all text-xs font-mono text-black/60 dark:text-white/60">
+                              {shareUrl}
+                            </p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
+                      You don&apos;t have any pending invitations. Generate a new link to start collaborating with a client.
+                    </p>
+                  )}
+                </article>
+
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Project briefs</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Monitor the latest ideas your clients have shared and keep track of their status.
+                  </p>
+                  {projects.length > 0 ? (
+                    <ul className="mt-4 space-y-4">
+                      {projects.map((project) => {
+                        const submitted = parseDate(project.submittedAt);
+                        const clientLabel = clientsById.get(project.clientId) ?? project.clientId;
+
+                        return (
+                          <li
+                            key={project.id}
+                            className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-black dark:text-white">
+                                  {project.title}
+                                </p>
+                                <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
+                                  Klient: {clientLabel}
+                                </p>
+                                {project.details ? (
+                                  <p className="mt-1 text-sm/6 text-black/70 dark:text-white/70">
+                                    {project.details}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">
+                                {project.status.replace(/_/g, " ")}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
+                              Submitted {formatDateTime(submitted)}
+                            </p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
+                      You haven&apos;t received any briefs yet. Clients will appear here after they send their first project.
+                    </p>
+                  )}
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Klienci</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Assigned clients</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Review the clients connected to your workspace and see the latest briefs they have submitted.
+                  </p>
+                  {carpenterClients.length > 0 ? (
+                    <ul className="mt-4 space-y-5">
+                      {carpenterClients.map((client) => {
+                        const clientProjects = projectsByClient.get(client.clientId) ?? [];
+
+                        return (
+                          <li
+                            key={client.clientId}
+                            className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-black dark:text-white">
+                                  {client.clientEmail ?? "Client"}
+                                </p>
+                                <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
+                                  ID: {client.clientId}
+                                </p>
+                              </div>
+                              <span className="inline-flex items-center rounded-full bg-black/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-black/80 dark:bg-white/10 dark:text-white/80">
+                                {clientProjects.length} {clientProjects.length === 1 ? "project" : "projects"}
+                              </span>
+                            </div>
+
+                            {clientProjects.length > 0 ? (
+                              <ul className="mt-3 space-y-3">
+                                {clientProjects.map((project) => {
+                                  const submitted = parseDate(project.submittedAt);
+
+                                  return (
+                                    <li
+                                      key={project.id}
+                                      className="rounded-xl border border-black/10 bg-white/60 p-4 dark:border-white/10 dark:bg-neutral-900/60"
+                                    >
+                                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                          <p className="text-sm font-semibold text-black dark:text-white">
+                                            {project.title}
+                                          </p>
+                                          {project.details ? (
+                                            <p className="mt-1 text-sm/6 text-black/70 dark:text-white/70">
+                                              {project.details}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">
+                                          {project.status.replace(/_/g, " ")}
+                                        </span>
+                                      </div>
+                                      <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
+                                        Submitted {formatDateTime(submitted)}
+                                      </p>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            ) : (
+                              <p className="mt-3 text-sm/6 text-black/60 dark:text-white/60">
+                                This client hasn&apos;t submitted any project briefs yet.
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
+                      When clients accept your invitations they will appear here.
+                    </p>
+                  )}
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Ustawienia ogólne projektów</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Konfiguracja projektów</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Personalizowane ustawienia briefów pojawią się wkrótce. Tutaj określisz domyślne terminy, zakresy oraz checklisty dla nowych projektów.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Kalendarz</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Planowanie pracy</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Widok kalendarza będzie dostępny, gdy tylko zsynchronizujemy harmonogramy z briefami projektów.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Rozliczenia</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Status rozliczeń</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Sekcja rozliczeń pojawi się tutaj, aby śledzić płatności i faktury powiązane z projektami.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </details>
         </section>
       ) : null}
 
