@@ -394,7 +394,7 @@ export default function DashboardPage() {
 
     const abortController = new AbortController();
 
-    if (accountType === "carpenter" || accountType === "admin") {
+    if (accountType === "carpenter") {
       refreshCarpenterData(abortController.signal);
     } else if (accountType === "client") {
       refreshClientData(abortController.signal);
@@ -531,7 +531,8 @@ export default function DashboardPage() {
 
   const expirationDate = parseDate(subscriptionExpiresAt);
   const now = new Date();
-  const isCarpenterView = accountType === "carpenter" || accountType === "admin";
+  const isAdminView = accountType === "admin";
+  const isCarpenterView = accountType === "carpenter";
   const isClientView = accountType === "client";
   const pendingInvitations = useMemo(() => {
     return invitations.filter((invitation) => {
@@ -771,6 +772,187 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold">Collaboration data unavailable</h2>
           <p className="mt-2 text-sm/6">{dashboardError}</p>
         </div>
+      ) : null}
+
+      {isAdminView ? (
+        <section className="space-y-6">
+          <details
+            className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"
+            open
+          >
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Zarządzanie użytkownikami</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Przegląd kont</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Monitoruj liczbę aktywnych ról w systemie i reaguj na oczekujące wnioski o dostęp.
+                  </p>
+                  <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Aktywni stolarze</dt>
+                      <dd className="mt-1 text-2xl font-semibold">12</dd>
+                    </div>
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Aktywni klienci</dt>
+                      <dd className="mt-1 text-2xl font-semibold">87</dd>
+                    </div>
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Wnioski do przeglądu</dt>
+                      <dd className="mt-1 text-2xl font-semibold">5</dd>
+                    </div>
+                  </dl>
+                  <p className="mt-4 text-sm/6 text-black/70 dark:text-white/70">
+                    Skorzystaj z panelu administracyjnego, aby zatwierdzać nowych użytkowników lub blokować podejrzane konta.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Zarządzanie subskrypcjami</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Status planów</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Przeglądaj wygasające subskrypcje i szybko kontaktuj się z zespołami sprzedaży w razie problemów z płatnościami.
+                  </p>
+                  <ul className="mt-4 space-y-3 text-sm/6 text-black/70 dark:text-white/70">
+                    <li className="flex items-center justify-between rounded-xl bg-black/5 px-4 py-3 dark:bg-white/10">
+                      <span>Subskrypcje wygasające w tym tygodniu</span>
+                      <strong>8</strong>
+                    </li>
+                    <li className="flex items-center justify-between rounded-xl bg-black/5 px-4 py-3 dark:bg-white/10">
+                      <span>Nieudane płatności do wyjaśnienia</span>
+                      <strong>3</strong>
+                    </li>
+                    <li className="flex items-center justify-between rounded-xl bg-black/5 px-4 py-3 dark:bg-white/10">
+                      <span>Aktywne plany premium</span>
+                      <strong>41</strong>
+                    </li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Zarządzanie stroną</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Panel treści</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Aktualizuj treści strony głównej i komunikaty w aplikacji, aby informować klientów o nowych funkcjach.
+                  </p>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm/6 text-black/70 dark:text-white/70">
+                    <li>Zmień sekcję hero, aby promować sezonowe kampanie.</li>
+                    <li>Zarządzaj biblioteką zdjęć w galerii realizacji.</li>
+                    <li>Publikuj aktualności i poradniki dla użytkowników.</li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+          </details>
+
+          <details className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Statystyki</span>
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M5 8l5 5 5-5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </summary>
+            <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+              <div className="space-y-6">
+                <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                  <h2 className="text-lg font-semibold">Wskaźniki platformy</h2>
+                  <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                    Analizuj kluczowe liczby, aby optymalizować rozwój produktu.
+                  </p>
+                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Średni czas odpowiedzi</dt>
+                      <dd className="mt-1 text-xl font-semibold">2,4 h</dd>
+                    </div>
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Nowe projekty / tydzień</dt>
+                      <dd className="mt-1 text-xl font-semibold">56</dd>
+                    </div>
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Satysfakcja klientów</dt>
+                      <dd className="mt-1 text-xl font-semibold">94%</dd>
+                    </div>
+                    <div className="rounded-xl bg-black/5 px-4 py-3 text-sm text-black dark:bg-white/10 dark:text-white">
+                      <dt className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">Ukończone projekty</dt>
+                      <dd className="mt-1 text-xl font-semibold">312</dd>
+                    </div>
+                  </dl>
+                </article>
+              </div>
+            </div>
+          </details>
+        </section>
       ) : null}
 
       {isCarpenterView ? (
