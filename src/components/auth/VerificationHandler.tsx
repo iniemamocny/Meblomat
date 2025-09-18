@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AuthError } from "@supabase/supabase-js";
+import type { AuthError, User } from "@supabase/supabase-js";
 
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
@@ -87,6 +87,7 @@ export function VerificationHandler({
       setStatus("processing");
 
       let authError: AuthError | null = null;
+      let authenticatedUser: User | null = null;
 
       if (type === "email_change") {
         const token = tokenHash ?? code;
@@ -95,11 +96,13 @@ export function VerificationHandler({
           setErrorMessage("This verification link is not valid.");
           return;
         }
-        const { error } = await verifyEmailChangeRequest(supabase, token);
+        const { data, error } = await verifyEmailChangeRequest(supabase, token);
         authError = error;
+        authenticatedUser = data?.user ?? data?.session?.user ?? null;
       } else {
-        const { error } = await supabase.auth.exchangeCodeForSession(code!);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code!);
         authError = error;
+        authenticatedUser = data?.user ?? data?.session?.user ?? null;
       }
 
       if (!active) {
@@ -110,6 +113,112 @@ export function VerificationHandler({
         setStatus("error");
         setErrorMessage(authError.message);
         return;
+      }
+
+      if (!authenticatedUser) {
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
+
+        if (!active) {
+          return;
+        }
+
+        if (getUserError) {
+          setStatus("error");
+          setErrorMessage(getUserError.message);
+          return;
+        }
+
+        authenticatedUser = userData?.user ?? null;
+      }
+
+      if (!authenticatedUser) {
+        setStatus("error");
+        setErrorMessage(
+          "We couldn't load your account after verifying. Please try signing in again.",
+        );
+        return;
+      }
+
+      const pendingAccountType = authenticatedUser.user_metadata?.pending_account_type;
+      const pendingInvitationToken =
+        authenticatedUser.user_metadata?.pending_invitation_token;
+
+      if (pendingAccountType) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("account_type")
+          .eq("id", authenticatedUser.id)
+          .single();
+
+        if (!active) {
+          return;
+        }
+
+        if (profileError) {
+          setStatus("error");
+          setErrorMessage(profileError.message);
+          return;
+        }
+
+        if (profile?.account_type !== pendingAccountType) {
+          const { error: updateProfileError } = await supabase
+            .from("profiles")
+            .update({ account_type: pendingAccountType })
+            .eq("id", authenticatedUser.id);
+
+          if (!active) {
+            return;
+          }
+
+          if (updateProfileError) {
+            setStatus("error");
+            setErrorMessage(updateProfileError.message);
+            return;
+          }
+        }
+      }
+
+      if (pendingInvitationToken) {
+        const { error: invitationError } = await supabase.rpc(
+          "accept_carpenter_invitation",
+          { invitation_token: pendingInvitationToken },
+        );
+
+        if (!active) {
+          return;
+        }
+
+        if (invitationError) {
+          setStatus("error");
+          setErrorMessage(invitationError.message);
+          return;
+        }
+      }
+
+      if (pendingAccountType || pendingInvitationToken) {
+        const metadataToClear: Record<string, null> = {};
+
+        if (pendingAccountType) {
+          metadataToClear.pending_account_type = null;
+        }
+
+        if (pendingInvitationToken) {
+          metadataToClear.pending_invitation_token = null;
+        }
+
+        if (Object.keys(metadataToClear).length > 0) {
+          const { error: updateUserError } = await supabase.auth.updateUser({
+            data: metadataToClear,
+          });
+
+          if (!active) {
+            return;
+          }
+
+          if (updateUserError) {
+            console.error("Failed to clear pending metadata", updateUserError);
+          }
+        }
       }
 
       setStatus("idle");
