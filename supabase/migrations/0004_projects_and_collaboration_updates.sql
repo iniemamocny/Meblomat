@@ -99,10 +99,10 @@ drop policy if exists "Clients update shared projects" on public.projects;
 
 drop policy if exists "Clients submit projects" on public.projects;
 
-drop policy if exists "Participants view their projects" on public.projects;
 drop policy if exists "Participants manage their projects" on public.projects;
 
-create policy if not exists "Participants view their projects"
+drop policy if exists "Participants view their projects" on public.projects;
+create policy "Participants view their projects"
   on public.projects
   for select
   using (
@@ -116,7 +116,8 @@ create policy if not exists "Participants view their projects"
     )
   );
 
-create policy if not exists "Carpenters create projects"
+drop policy if exists "Carpenters create projects" on public.projects;
+create policy "Carpenters create projects"
   on public.projects
   for insert
   with check (
@@ -129,7 +130,8 @@ create policy if not exists "Carpenters create projects"
     )
   );
 
-create policy if not exists "Carpenters update their projects"
+drop policy if exists "Carpenters update their projects" on public.projects;
+create policy "Carpenters update their projects"
   on public.projects
   for update
   using (
@@ -151,7 +153,8 @@ create policy if not exists "Carpenters update their projects"
     )
   );
 
-create policy if not exists "Carpenters delete their projects"
+drop policy if exists "Carpenters delete their projects" on public.projects;
+create policy "Carpenters delete their projects"
   on public.projects
   for delete
   using (
@@ -411,12 +414,13 @@ grant execute on function public.submit_project_brief(target_carpenter uuid, pro
 
 -- Expand profile policies so collaborators can view relevant information.
 drop policy if exists "Profiles are readable by their owner" on public.profiles;
-create policy if not exists "Profiles are readable by their owner"
+create policy "Profiles are readable by their owner"
   on public.profiles
   for select
   using (auth.uid() = id);
 
-create policy if not exists "Carpenters view assigned clients"
+drop policy if exists "Carpenters view assigned clients" on public.profiles;
+create policy "Carpenters view assigned clients"
   on public.profiles
   for select
   using (
@@ -429,7 +433,8 @@ create policy if not exists "Carpenters view assigned clients"
     )
   );
 
-create policy if not exists "Clients view assigned carpenter"
+drop policy if exists "Clients view assigned carpenter" on public.profiles;
+create policy "Clients view assigned carpenter"
   on public.profiles
   for select
   using (
@@ -442,7 +447,8 @@ create policy if not exists "Clients view assigned carpenter"
     )
   );
 
-create policy if not exists "Authenticated users can view active carpenters"
+drop policy if exists "Authenticated users can view active carpenters" on public.profiles;
+create policy "Authenticated users can view active carpenters"
   on public.profiles
   for select
   using (
@@ -452,7 +458,8 @@ create policy if not exists "Authenticated users can view active carpenters"
   );
 
 -- Ensure update policies still prevent privilege escalation.
-create policy if not exists "Profiles are updatable by their owner"
+drop policy if exists "Profiles are updatable by their owner" on public.profiles;
+create policy "Profiles are updatable by their owner"
   on public.profiles
   for update
   using (auth.uid() = id);
