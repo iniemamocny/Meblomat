@@ -605,3 +605,5 @@ create policy "Avatar files are removable by their owner"
 ```
 
 > ℹ️ If you've previously run `select storage.create_bucket('avatars', false);`, replace it with the `insert … on conflict do nothing` statement above. The direct insert succeeds even when the helper is unavailable and the `on conflict` clause keeps the bucket creation idempotent alongside the drop-and-create policy pattern.
+>
+> ❗️ Seeing `ERROR: 42883: function storage.create_bucket(unknown, boolean) does not exist` usually means an older helper call is still in your script. Remove that `select storage.create_bucket(...)` line and rerun the insert so Supabase stops raising the error.

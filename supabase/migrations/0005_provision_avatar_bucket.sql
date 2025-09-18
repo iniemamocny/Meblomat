@@ -1,5 +1,7 @@
 -- Provision the avatars Storage bucket and policies without relying on the
--- storage.create_bucket helper, which is missing on some Supabase instances.
+-- storage.create_bucket helper, which is missing on some Supabase instances
+-- and would otherwise raise the 42883 "function storage.create_bucket does not
+-- exist" error.
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', false)
 on conflict (id) do nothing;
