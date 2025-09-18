@@ -632,12 +632,114 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-16">
-      <header className="space-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-base text-black/60 dark:text-white/60">
-          Welcome back{userEmail ? `, ${userEmail}` : ""}.
-        </p>
-      </header>
+      <details
+        open
+        className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"
+      >
+        <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-black outline-none transition hover:bg-black/5 dark:text-white dark:hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+          <span>Ustawienia ogólne</span>
+          <svg
+            aria-hidden="true"
+            className="size-4 shrink-0 text-black/60 transition group-open:rotate-180 dark:text-white/60"
+            fill="none"
+            viewBox="0 0 20 20"
+          >
+            <path
+              d="M5 8l5 5 5-5"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+            />
+          </svg>
+        </summary>
+        <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
+          <div className="space-y-8">
+            <header className="space-y-2">
+              <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
+              <p className="text-base text-black/60 dark:text-white/60">
+                Welcome back{userEmail ? `, ${userEmail}` : ""}.
+              </p>
+            </header>
+
+            <section className="grid gap-6 md:grid-cols-2">
+              <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                <h2 className="text-lg font-semibold">Account overview</h2>
+                <dl className="mt-4 space-y-4 text-sm/6 text-black/70 dark:text-white/70">
+                  <div>
+                    <dt className="font-medium text-black dark:text-white">Email</dt>
+                    <dd className="mt-1 break-all">{userEmail ?? "Unknown"}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-black dark:text-white">Subscription expires</dt>
+                    <dd className="mt-1">{formatDateTime(expirationDate)}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article className="flex flex-col gap-4 rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                <h2 className="text-lg font-semibold">Quick actions</h2>
+                <p className="text-sm/6 text-black/60 dark:text-white/60">
+                  Manage your access and keep your account secure.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
+                    href="/auth/logout"
+                  >
+                    Sign out
+                  </Link>
+                  <a
+                    className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
+                    href="mailto:support@example.com"
+                  >
+                    Contact support
+                  </a>
+                </div>
+              </article>
+
+              <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
+                <h2 className="text-lg font-semibold">Avatar</h2>
+                <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
+                  Wybierz ikonę, która będzie widoczna w nagłówku i na dashboardzie.
+                </p>
+                <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center">
+                  <UserAvatar
+                    imageUrl={avatarType === "upload" ? avatarUrl : null}
+                    fallbackIcon={avatarFallbackIcon}
+                    initials={avatarInitials}
+                    className="size-16 text-2xl"
+                  />
+                  <div className="text-sm/6 text-black/60 dark:text-white/60">
+                    {avatarLoadError ? (
+                      <p className="text-red-600 dark:text-red-400">{avatarLoadError}</p>
+                    ) : showPreviewLoadingMessage ? (
+                      <p>Trwa generowanie podglądu przesłanego obrazu…</p>
+                    ) : (
+                      <p>Tak będzie wyglądał Twój profil w aplikacji.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-6">
+                  {supabase && userId ? (
+                    <AvatarPicker
+                      supabase={supabase}
+                      userId={userId}
+                      currentAvatarType={avatarType}
+                      currentAvatarPath={avatarPath}
+                      onAvatarChange={handleAvatarChange}
+                    />
+                  ) : (
+                    <p className="text-sm/6 text-black/60 dark:text-white/60">
+                      Zaloguj się, aby zmienić avatar.
+                    </p>
+                  )}
+                </div>
+              </article>
+            </section>
+          </div>
+        </div>
+      </details>
 
       {warning ? (
         <div className="rounded-2xl border border-amber-300/80 bg-amber-50 px-6 py-5 text-amber-900 dark:border-amber-400/60 dark:bg-amber-400/10 dark:text-amber-100">
@@ -645,83 +747,7 @@ export default function DashboardPage() {
           <p className="mt-2 text-sm/6">{warning.description}</p>
         </div>
       ) : null}
-
-      <section className="grid gap-6 md:grid-cols-2">
-        <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-          <h2 className="text-lg font-semibold">Account overview</h2>
-          <dl className="mt-4 space-y-4 text-sm/6 text-black/70 dark:text-white/70">
-            <div>
-              <dt className="font-medium text-black dark:text-white">Email</dt>
-              <dd className="mt-1 break-all">{userEmail ?? "Unknown"}</dd>
-            </div>
-            <div>
-              <dt className="font-medium text-black dark:text-white">Subscription expires</dt>
-              <dd className="mt-1">{formatDateTime(expirationDate)}</dd>
-            </div>
-          </dl>
-        </article>
-
-        <article className="flex flex-col gap-4 rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-          <h2 className="text-lg font-semibold">Quick actions</h2>
-          <p className="text-sm/6 text-black/60 dark:text-white/60">
-            Manage your access and keep your account secure.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
-              href="/auth/logout"
-            >
-              Sign out
-            </Link>
-            <a
-              className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
-              href="mailto:support@example.com"
-            >
-              Contact support
-            </a>
-          </div>
-        </article>
-
-        <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
-          <h2 className="text-lg font-semibold">Avatar</h2>
-          <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-            Wybierz ikonę, która będzie widoczna w nagłówku i na dashboardzie.
-          </p>
-          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center">
-            <UserAvatar
-              imageUrl={avatarType === "upload" ? avatarUrl : null}
-              fallbackIcon={avatarFallbackIcon}
-              initials={avatarInitials}
-              className="size-16 text-2xl"
-            />
-            <div className="text-sm/6 text-black/60 dark:text-white/60">
-              {avatarLoadError ? (
-                <p className="text-red-600 dark:text-red-400">{avatarLoadError}</p>
-              ) : showPreviewLoadingMessage ? (
-                <p>Trwa generowanie podglądu przesłanego obrazu…</p>
-              ) : (
-                <p>Tak będzie wyglądał Twój profil w aplikacji.</p>
-              )}
-            </div>
-          </div>
-          <div className="mt-6">
-            {supabase && userId ? (
-              <AvatarPicker
-                supabase={supabase}
-                userId={userId}
-                currentAvatarType={avatarType}
-                currentAvatarPath={avatarPath}
-                onAvatarChange={handleAvatarChange}
-              />
-            ) : (
-              <p className="text-sm/6 text-black/60 dark:text-white/60">
-                Zaloguj się, aby zmienić avatar.
-              </p>
-            )}
-          </div>
-        </article>
-      </section>
-
+      
       {dashboardError ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-5 text-red-800 dark:border-red-400/60 dark:bg-red-400/10 dark:text-red-100">
           <h2 className="text-lg font-semibold">Collaboration data unavailable</h2>
