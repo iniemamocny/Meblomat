@@ -2,6 +2,8 @@
 -- storage.create_bucket helper, which is missing on some Supabase instances
 -- and would otherwise raise the 42883 "function storage.create_bucket does not
 -- exist" error.
+-- ⚠️ Do not replace this insert with a call to storage.create_bucket(..);
+--    older/self-hosted stacks omit that helper entirely.
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', false)
 on conflict (id) do update

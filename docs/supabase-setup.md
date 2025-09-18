@@ -563,6 +563,9 @@ Once the script is applied, create an account through the app. A matching `publi
 Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files. The bucket is inserted directly because some Supabase instances (including self-hosted deployments and older projects) do not expose the `storage.create_bucket` helper, which would otherwise trigger the `42883` error. The `on conflict` clause keeps reruns idempotent and corrects the bucket metadata if it already exists:
 
 ```sql
+-- ⚠️ Keep this direct insert. Older/self-hosted Supabase instances do not expose
+--    storage.create_bucket(..) and will raise ERROR 42883 if that helper is
+--    called.
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', false)
 on conflict (id) do update
@@ -607,4 +610,8 @@ create policy "Avatar files are removable by their owner"
   );
 ```
 
-> ❗️ If an earlier script (or an auto-merge) left `select storage.create_bucket('avatars', false);` in place, delete that line before rerunning this block. The helper is missing on some Supabase projects and will keep throwing `ERROR: 42883: function storage.create_bucket(unknown, boolean) does not exist` until it is removed.
+> ❗️ If a previous run or merge still left a `storage.create_bucket` call in your
+> migration history, delete that statement before applying this block. The
+> helper is absent on some Supabase projects and will continue to raise
+> `ERROR: 42883: function storage.create_bucket(unknown, boolean) does not exist`
+> whenever it executes.
