@@ -54,6 +54,8 @@ type InvitationRow = {
 };
 
 const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+const TRIAL_PERIOD_IN_MS = 14 * 24 * 60 * 60 * 1000;
+const DEFAULT_ACCOUNT_TYPE: AccountType = "client";
 
 function parseDate(value: string | null | undefined) {
   if (!value) {
@@ -92,6 +94,7 @@ export default function DashboardPage() {
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] =
     useState<string | null>(null);
   const [profileError, setProfileError] = useState(false);
+  const [isProfileMissing, setIsProfileMissing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [avatarType, setAvatarType] = useState<AvatarType>("icon");
@@ -207,7 +210,22 @@ export default function DashboardPage() {
       let nextAvatarUrl: string | null = null;
       let hasPreviewError = false;
 
-      if (!profileFetchError && profile) {
+      const userCreatedAt = user.created_at ? new Date(user.created_at) : null;
+      const fallbackTrialExpiry =
+        userCreatedAt && !Number.isNaN(userCreatedAt.getTime())
+          ? new Date(userCreatedAt.getTime() + TRIAL_PERIOD_IN_MS)
+          : null;
+      const fallbackTrialExpiryIso =
+        fallbackTrialExpiry?.toISOString() ?? null;
+
+      let nextSubscriptionExpiresAt = fallbackTrialExpiryIso;
+      let nextAccountType: AccountType | null = null;
+      let nextProfileError = false;
+      let profileMissing = false;
+
+      const hasProfile = Boolean(profile);
+
+      if (!profileFetchError && hasProfile && profile) {
         nextAvatarType = profile.avatar_type === "upload" ? "upload" : "icon";
         nextAvatarPath = profile.avatar_path ?? DEFAULT_AVATAR_ID;
 
@@ -227,17 +245,30 @@ export default function DashboardPage() {
             nextAvatarUrl = signedUrlData?.signedUrl ?? null;
           }
         }
+
+        nextSubscriptionExpiresAt =
+          profile.subscription_expires_at ?? fallbackTrialExpiryIso;
+        nextAccountType = profile.account_type ?? DEFAULT_ACCOUNT_TYPE;
+      } else {
+        nextProfileError = true;
+
+        if (!hasProfile && !profileFetchError) {
+          profileMissing = true;
+          nextAccountType = DEFAULT_ACCOUNT_TYPE;
+        } else if (profileFetchError) {
+          profileMissing = !hasProfile;
+        }
       }
 
       if (profileFetchError) {
-        setProfileError(true);
-        setSubscriptionExpiresAt(null);
-      } else {
-        setProfileError(false);
-        setSubscriptionExpiresAt(profile?.subscription_expires_at ?? null);
+        nextProfileError = true;
+        profileMissing = true;
       }
 
-      setAccountType(profile?.account_type ?? null);
+      setProfileError(nextProfileError);
+      setIsProfileMissing(profileMissing);
+      setSubscriptionExpiresAt(nextSubscriptionExpiresAt);
+      setAccountType(nextAccountType);
 
       handleAvatarChange({
         type: nextAvatarType,
@@ -612,11 +643,19 @@ export default function DashboardPage() {
   let warning: { title: string; description: string } | null = null;
 
   if (profileError) {
-    warning = {
-      title: "Subscription details unavailable",
-      description:
-        "We couldn't load your subscription information. Please try again later.",
-    };
+    if (isProfileMissing) {
+      warning = {
+        title: "Finish configuring Supabase",
+        description:
+          "We couldn't find your profile data. Apply the SQL from docs/supabase-setup.md so the profiles table and defaults exist.",
+      };
+    } else {
+      warning = {
+        title: "Subscription details unavailable",
+        description:
+          "We couldn't load your subscription information. Please try again later.",
+      };
+    }
   } else if (!expirationDate) {
     warning = {
       title: "No active subscription",
