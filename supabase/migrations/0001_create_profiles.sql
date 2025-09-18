@@ -11,12 +11,14 @@ alter table public.profiles enable row level security;
 create index if not exists profiles_subscription_expires_at_idx
   on public.profiles (subscription_expires_at);
 
-create policy if not exists "Profiles are readable by their owner"
+drop policy if exists "Profiles are readable by their owner" on public.profiles;
+create policy "Profiles are readable by their owner"
   on public.profiles
   for select
   using (auth.uid() = id);
 
-create policy if not exists "Profiles are updatable by their owner"
+drop policy if exists "Profiles are updatable by their owner" on public.profiles;
+create policy "Profiles are updatable by their owner"
   on public.profiles
   for update
   using (auth.uid() = id);
