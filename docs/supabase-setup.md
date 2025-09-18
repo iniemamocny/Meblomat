@@ -563,9 +563,7 @@ Once the script is applied, create an account through the app. A matching `publi
 Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files:
 
 ```sql
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', false)
-on conflict (id) do nothing;
+select storage.create_bucket('avatars', false);
 
 drop policy if exists "Avatar files are readable by their owner" on storage.objects;
 create policy "Avatar files are readable by their owner"
@@ -604,4 +602,4 @@ create policy "Avatar files are removable by their owner"
   );
 ```
 
-> ℹ️ The insert is idempotent, so rerunning the SQL after the bucket already exists will keep the row unchanged. Dropping and recreating each policy keeps the Storage permissions idempotent as well.
+> ℹ️ If you rerun the SQL after the bucket already exists, Supabase will ignore the `create_bucket` call. Dropping and recreating each policy keeps the Storage permissions idempotent as well.
