@@ -563,7 +563,7 @@ Once the script is applied, create an account through the app. A matching `publi
 Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files:
 
 ```sql
-select storage.create_bucket('avatars', jsonb_build_object('public', false));
+select storage.create_bucket('avatars', false);
 
 drop policy if exists "Avatar files are readable by their owner" on storage.objects;
 create policy "Avatar files are readable by their owner"
