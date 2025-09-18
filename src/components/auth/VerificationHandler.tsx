@@ -98,11 +98,24 @@ export function VerificationHandler({
         }
         const { data, error } = await verifyEmailChangeRequest(supabase, token);
         authError = error;
-        authenticatedUser = data?.user ?? data?.session?.user ?? null;
+        if (!error && data) {
+          const { user: responseUser, session } = data;
+
+          if (responseUser) {
+            authenticatedUser = responseUser;
+          } else if (session) {
+            authenticatedUser = session.user;
+          }
+        }
       } else {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code!);
+        const exchangeResponse = await supabase.auth.exchangeCodeForSession(code!);
+        const { data, error } = exchangeResponse;
         authError = error;
-        authenticatedUser = data?.user ?? data?.session?.user ?? null;
+        if (!error) {
+          const { user: responseUser, session } = data;
+
+          authenticatedUser = responseUser ?? session.user;
+        }
       }
 
       if (!active) {
