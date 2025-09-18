@@ -1,4 +1,5 @@
--- Provision the avatars Storage bucket and policies.
+-- Provision the avatars Storage bucket and policies without relying on the
+-- storage.create_bucket helper, which is missing on some Supabase instances.
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', false)
 on conflict (id) do nothing;

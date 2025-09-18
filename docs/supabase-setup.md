@@ -560,7 +560,7 @@ Once the script is applied, create an account through the app. A matching `publi
 
 ## 3. Provision the Storage bucket for avatars
 
-Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files:
+Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files. The bucket is inserted directly because some Supabase instances (including self-hosted deployments and older projects) do not expose the `storage.create_bucket` helper, which would otherwise trigger the `42883` error:
 
 ```sql
 insert into storage.buckets (id, name, public)
@@ -604,4 +604,4 @@ create policy "Avatar files are removable by their owner"
   );
 ```
 
-> ℹ️ Supabase projects without the `storage.create_bucket` helper (self-hosted deployments, older instances, etc.) can still provision the bucket with the `insert … on conflict do nothing` statement above. Dropping and recreating each policy keeps the Storage permissions idempotent as well.
+> ℹ️ If you've previously run `select storage.create_bucket('avatars', false);`, replace it with the `insert … on conflict do nothing` statement above. The direct insert succeeds even when the helper is unavailable and the `on conflict` clause keeps the bucket creation idempotent alongside the drop-and-create policy pattern.
