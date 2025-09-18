@@ -60,15 +60,16 @@ alter table public.profiles enable row level security;
 create index if not exists profiles_subscription_expires_at_idx
   on public.profiles (subscription_expires_at);
 
--- Ensure every signed-in user can read their own profile row.
-create policy if not exists "Profiles are readable by their owner"
+drop policy if exists "Profiles are readable by their owner" on public.profiles;
+create policy "Profiles are readable by their owner"
   on public.profiles
   for select
   using (auth.uid() = id);
 
 -- Allow future profile columns to be updated by the owner while
 -- a trigger (defined below) keeps the subscription timestamp locked down.
-create policy if not exists "Profiles are updatable by their owner"
+drop policy if exists "Profiles are updatable by their owner" on public.profiles;
+create policy "Profiles are updatable by their owner"
   on public.profiles
   for update
   using (auth.uid() = id);
@@ -219,7 +220,8 @@ alter table public.carpenter_clients enable row level security;
 alter table public.carpenter_projects enable row level security;
 
 -- Policies for carpenter invitations.
-create policy if not exists "Carpenters view their invitations"
+drop policy if exists "Carpenters view their invitations" on public.carpenter_invitations;
+create policy "Carpenters view their invitations"
   on public.carpenter_invitations
   for select
   using (
@@ -240,7 +242,8 @@ create policy if not exists "Carpenters view their invitations"
     )
   );
 
-create policy if not exists "Carpenters create invitations"
+drop policy if exists "Carpenters create invitations" on public.carpenter_invitations;
+create policy "Carpenters create invitations"
   on public.carpenter_invitations
   for insert
   with check (
@@ -261,7 +264,8 @@ create policy if not exists "Carpenters create invitations"
     )
   );
 
-create policy if not exists "Carpenters update their invitations"
+drop policy if exists "Carpenters update their invitations" on public.carpenter_invitations;
+create policy "Carpenters update their invitations"
   on public.carpenter_invitations
   for update
   using (
@@ -299,7 +303,8 @@ create policy if not exists "Carpenters update their invitations"
     )
   );
 
-create policy if not exists "Carpenters delete their invitations"
+drop policy if exists "Carpenters delete their invitations" on public.carpenter_invitations;
+create policy "Carpenters delete their invitations"
   on public.carpenter_invitations
   for delete
   using (
@@ -321,7 +326,8 @@ create policy if not exists "Carpenters delete their invitations"
   );
 
 -- Policies for carpenter/client links.
-create policy if not exists "Carpenters and clients view their link"
+drop policy if exists "Carpenters and clients view their link" on public.carpenter_clients;
+create policy "Carpenters and clients view their link"
   on public.carpenter_clients
   for select
   using (
@@ -343,7 +349,8 @@ create policy if not exists "Carpenters and clients view their link"
     )
   );
 
-create policy if not exists "Carpenters manage their client links"
+drop policy if exists "Carpenters manage their client links" on public.carpenter_clients;
+create policy "Carpenters manage their client links"
   on public.carpenter_clients
   for insert
   with check (
@@ -364,7 +371,8 @@ create policy if not exists "Carpenters manage their client links"
     )
   );
 
-create policy if not exists "Carpenters update their client links"
+drop policy if exists "Carpenters update their client links" on public.carpenter_clients;
+create policy "Carpenters update their client links"
   on public.carpenter_clients
   for update
   using (
@@ -402,7 +410,8 @@ create policy if not exists "Carpenters update their client links"
     )
   );
 
-create policy if not exists "Carpenters remove their client links"
+drop policy if exists "Carpenters remove their client links" on public.carpenter_clients;
+create policy "Carpenters remove their client links"
   on public.carpenter_clients
   for delete
   using (
@@ -424,7 +433,8 @@ create policy if not exists "Carpenters remove their client links"
   );
 
 -- Policies for shared projects.
-create policy if not exists "Carpenters and clients view shared projects"
+drop policy if exists "Carpenters and clients view shared projects" on public.carpenter_projects;
+create policy "Carpenters and clients view shared projects"
   on public.carpenter_projects
   for select
   using (
@@ -446,7 +456,8 @@ create policy if not exists "Carpenters and clients view shared projects"
     )
   );
 
-create policy if not exists "Carpenters create shared projects"
+drop policy if exists "Carpenters create shared projects" on public.carpenter_projects;
+create policy "Carpenters create shared projects"
   on public.carpenter_projects
   for insert
   with check (
@@ -467,7 +478,8 @@ create policy if not exists "Carpenters create shared projects"
     )
   );
 
-create policy if not exists "Carpenters update shared projects"
+drop policy if exists "Carpenters update shared projects" on public.carpenter_projects;
+create policy "Carpenters update shared projects"
   on public.carpenter_projects
   for update
   using (
@@ -505,7 +517,8 @@ create policy if not exists "Carpenters update shared projects"
     )
   );
 
-create policy if not exists "Carpenters delete shared projects"
+drop policy if exists "Carpenters delete shared projects" on public.carpenter_projects;
+create policy "Carpenters delete shared projects"
   on public.carpenter_projects
   for delete
   using (
@@ -552,21 +565,24 @@ Profiles now track whether an avatar is a built-in icon or a file stored in Supa
 ```sql
 select storage.create_bucket('avatars', jsonb_build_object('public', false));
 
-create policy if not exists "Avatar files are readable by their owner"
+drop policy if exists "Avatar files are readable by their owner" on storage.objects;
+create policy "Avatar files are readable by their owner"
   on storage.objects for select
   using (
     bucket_id = 'avatars'
     and auth.uid() = owner
   );
 
-create policy if not exists "Avatar files are uploaded by their owner"
+drop policy if exists "Avatar files are uploaded by their owner" on storage.objects;
+create policy "Avatar files are uploaded by their owner"
   on storage.objects for insert
   with check (
     bucket_id = 'avatars'
     and auth.uid() = owner
   );
 
-create policy if not exists "Avatar files are replaceable by their owner"
+drop policy if exists "Avatar files are replaceable by their owner" on storage.objects;
+create policy "Avatar files are replaceable by their owner"
   on storage.objects for update
   using (
     bucket_id = 'avatars'
@@ -577,7 +593,8 @@ create policy if not exists "Avatar files are replaceable by their owner"
     and auth.uid() = owner
   );
 
-create policy if not exists "Avatar files are removable by their owner"
+drop policy if exists "Avatar files are removable by their owner" on storage.objects;
+create policy "Avatar files are removable by their owner"
   on storage.objects for delete
   using (
     bucket_id = 'avatars'
@@ -585,4 +602,4 @@ create policy if not exists "Avatar files are removable by their owner"
   );
 ```
 
-> ℹ️ If you rerun the SQL after the bucket already exists, Supabase will ignore the `create_bucket` call. The `if not exists` guards keep the Storage policies idempotent as well.
+> ℹ️ If you rerun the SQL after the bucket already exists, Supabase will ignore the `create_bucket` call. Dropping and recreating each policy keeps the Storage permissions idempotent as well.
