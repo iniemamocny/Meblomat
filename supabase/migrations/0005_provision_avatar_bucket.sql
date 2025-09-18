@@ -4,7 +4,10 @@
 -- exist" error.
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', false)
-on conflict (id) do nothing;
+on conflict (id) do update
+set
+  name = excluded.name,
+  public = excluded.public;
 
 drop policy if exists "Avatar files are readable by their owner" on storage.objects;
 create policy "Avatar files are readable by their owner"

@@ -560,12 +560,15 @@ Once the script is applied, create an account through the app. A matching `publi
 
 ## 3. Provision the Storage bucket for avatars
 
-Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files. The bucket is inserted directly because some Supabase instances (including self-hosted deployments and older projects) do not expose the `storage.create_bucket` helper, which would otherwise trigger the `42883` error:
+Profiles now track whether an avatar is a built-in icon or a file stored in Supabase Storage. Create a private `avatars` bucket and policies that allow each user to manage their own files. The bucket is inserted directly because some Supabase instances (including self-hosted deployments and older projects) do not expose the `storage.create_bucket` helper, which would otherwise trigger the `42883` error. The `on conflict` clause keeps reruns idempotent and corrects the bucket metadata if it already exists:
 
 ```sql
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', false)
-on conflict (id) do nothing;
+on conflict (id) do update
+set
+  name = excluded.name,
+  public = excluded.public;
 
 drop policy if exists "Avatar files are readable by their owner" on storage.objects;
 create policy "Avatar files are readable by their owner"
@@ -604,6 +607,4 @@ create policy "Avatar files are removable by their owner"
   );
 ```
 
-> ℹ️ If you've previously run `select storage.create_bucket('avatars', false);`, replace it with the `insert … on conflict do nothing` statement above. The direct insert succeeds even when the helper is unavailable and the `on conflict` clause keeps the bucket creation idempotent alongside the drop-and-create policy pattern.
->
-> ❗️ Seeing `ERROR: 42883: function storage.create_bucket(unknown, boolean) does not exist` usually means an older helper call is still in your script. Remove that `select storage.create_bucket(...)` line and rerun the insert so Supabase stops raising the error.
+> ❗️ If an earlier script (or an auto-merge) left `select storage.create_bucket('avatars', false);` in place, delete that line before rerunning this block. The helper is missing on some Supabase projects and will keep throwing `ERROR: 42883: function storage.create_bucket(unknown, boolean) does not exist` until it is removed.
