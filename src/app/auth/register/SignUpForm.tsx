@@ -6,10 +6,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { translations } from "@/lib/i18n";
+import type { Language } from "@/lib/i18n";
 
 const EMAIL_REDIRECT_PATH = "/auth/verify";
 
-type AccountType = "carpenter" | "client";
+type AccountType = "admin" | "carpenter" | "client";
 
 type SignUpFormProps = {
   supabase: SupabaseClient;
@@ -31,10 +32,25 @@ function resolveForcedAccountType(
   return undefined;
 }
 
+function useLanguageOrFallback(): Language {
+  try {
+    return useLanguage().language;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("useLanguage must be used within a LanguageProvider")
+    ) {
+      return "en";
+    }
+
+    throw error;
+  }
+}
+
 export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { language } = useLanguage();
+  const language = useLanguageOrFallback();
   const formTexts = translations[language].auth.signUpForm;
   const invitationToken = searchParams?.get("invitation") ?? undefined;
   const accountParam = searchParams?.get("account") ?? null;
@@ -46,6 +62,7 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isAdminBootstrapAvailable, setIsAdminBootstrapAvailable] = useState(false);
 
   useEffect(() => {
     if (forcedAccountType) {
@@ -65,6 +82,48 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
       setEmailRedirectUrl(undefined);
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const checkAdminBootstrapAvailability = async () => {
+      try {
+        const { data, error } = await supabase.rpc("bootstrap_admin", { promote: false });
+
+        if (!active) {
+          return;
+        }
+
+        if (error) {
+          console.error("Failed to check administrator availability", error);
+          setIsAdminBootstrapAvailable(false);
+          return;
+        }
+
+        const adminCount =
+          typeof data === "object" && data !== null && "admin_count" in data
+            ? Number((data as { admin_count?: number }).admin_count)
+            : null;
+
+        setIsAdminBootstrapAvailable(adminCount === 0);
+      } catch (unknownError) {
+        if (!active) {
+          return;
+        }
+
+        console.error("Failed to check administrator availability", unknownError);
+        setIsAdminBootstrapAvailable(false);
+      }
+    };
+
+    if (!forcedAccountType) {
+      checkAdminBootstrapAvailability();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [forcedAccountType, supabase]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -227,6 +286,26 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
               </p>
             </div>
           </label>
+          {isAdminBootstrapAvailable ? (
+            <label className="flex cursor-pointer items-center gap-3 rounded-md border border-black/10 bg-white p-3 transition hover:border-black/30 dark:border-white/20 dark:bg-black dark:hover:border-white/40">
+              <input
+                type="radio"
+                name="account-type"
+                value="admin"
+                checked={accountType === "admin"}
+                onChange={() => setAccountType("admin")}
+                disabled={Boolean(forcedAccountType)}
+              />
+              <div>
+                <p className="text-sm font-medium text-black dark:text-white">
+                  {formTexts.accountTypes.admin.label}
+                </p>
+                <p className="text-sm text-black/60 dark:text-white/60">
+                  {formTexts.accountTypes.admin.description}
+                </p>
+              </div>
+            </label>
+          ) : null}
         </div>
         {forcedAccountType ? (
           <p className="text-xs text-black/60 dark:text-white/60">

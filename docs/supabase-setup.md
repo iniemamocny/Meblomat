@@ -15,6 +15,20 @@ Run the full script in the Supabase SQL editor (or apply it through the CLI as d
 - create collaboration tables for carpenter invitations, active client links, and shared projects, and
 - apply row level security policies so carpenters manage their own data, clients can read their assignments, and admins retain full access.
 
+Once the tables exist, the [`public.bootstrap_admin`](../supabase/migrations/0009_add_admin_bootstrap_function.sql) RPC reports the current number of administrator accounts and allows the first verified user to claim the sole admin slot. The Next.js registration form calls this function to expose an "Administrator" radio button while `admin_count` is zero. After email verification, the app invokes `public.bootstrap_admin(promote := true)` to set the caller’s `account_type` to `admin` and immediately clears the temporary metadata so future sign-ups cannot reuse the elevated role.
+
+If you prefer to bootstrap the administrator manually, run the following SQL in the Supabase editor after applying the migration:
+
+```sql
+-- Check whether an administrator already exists.
+select public.bootstrap_admin();
+
+-- For a verified session, promote the caller if the count is still zero.
+select public.bootstrap_admin(true);
+```
+
+Once the first admin is established, the RPC keeps returning a non-zero `admin_count`, the registration form hides the option, and all subsequent promotions must be performed through privileged service-role access.
+
 ```sql
 -- Extensions and enumerations used by the collaboration tables.
 create extension if not exists "pgcrypto";

@@ -157,36 +157,76 @@ export function VerificationHandler({
         authenticatedUser.user_metadata?.pending_invitation_token;
 
       if (pendingAccountType) {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("account_type")
-          .eq("id", authenticatedUser.id)
-          .single();
-
-        if (!active) {
-          return;
-        }
-
-        if (profileError) {
-          setStatus("error");
-          setErrorMessage(profileError.message);
-          return;
-        }
-
-        if (profile?.account_type !== pendingAccountType) {
-          const { error: updateProfileError } = await supabase
-            .from("profiles")
-            .update({ account_type: pendingAccountType })
-            .eq("id", authenticatedUser.id);
+        if (pendingAccountType === "admin") {
+          const { data: bootstrapResult, error: bootstrapError } = await supabase.rpc(
+            "bootstrap_admin",
+            { promote: true },
+          );
 
           if (!active) {
             return;
           }
 
-          if (updateProfileError) {
+          if (bootstrapError) {
             setStatus("error");
-            setErrorMessage(updateProfileError.message);
+            setErrorMessage(bootstrapError.message);
             return;
+          }
+
+          const promoted =
+            typeof bootstrapResult === "object" &&
+            bootstrapResult !== null &&
+            "promoted" in bootstrapResult &&
+            Boolean((bootstrapResult as { promoted?: boolean }).promoted);
+
+          const adminCount =
+            typeof bootstrapResult === "object" &&
+            bootstrapResult !== null &&
+            "admin_count" in bootstrapResult
+              ? Number((bootstrapResult as { admin_count?: number }).admin_count)
+              : null;
+
+          if (!promoted) {
+            setStatus("error");
+            setErrorMessage(
+              adminCount !== null && adminCount > 0
+                ? "An administrator already exists, so this link can no longer grant admin access."
+                : "We couldn't promote your account to administrator. Please try again.",
+            );
+            return;
+          }
+        } else {
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("account_type")
+            .eq("id", authenticatedUser.id)
+            .single();
+
+          if (!active) {
+            return;
+          }
+
+          if (profileError) {
+            setStatus("error");
+            setErrorMessage(profileError.message);
+            return;
+          }
+
+          if (profile?.account_type !== pendingAccountType) {
+            const { error: updateProfileError } = await supabase
+              .from("profiles")
+              .update({ account_type: pendingAccountType })
+              .eq("id", authenticatedUser.id);
+
+            if (!active) {
+              return;
+            }
+
+            if (updateProfileError) {
+              setStatus("error");
+              setErrorMessage(updateProfileError.message);
+              return;
+            }
           }
         }
       }

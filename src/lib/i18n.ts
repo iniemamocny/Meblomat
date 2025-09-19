@@ -75,6 +75,10 @@ type Translations = {
           label: string;
           description: string;
         };
+        admin: {
+          label: string;
+          description: string;
+        };
       };
       accountTypeLocked: string;
       errors: {
@@ -169,6 +173,11 @@ export const translations: Record<Language, Translations> = {
           client: {
             label: "Klient (bezpłatnie)",
             description: "Współpracuj ze swoim stolarzem bez dodatkowych kosztów.",
+          },
+          admin: {
+            label: "Administrator (pierwsze konto)",
+            description:
+              "Zajmij jedyne dostępne miejsce administratora, aby zarządzać wszystkimi ustawieniami.",
           },
         },
         accountTypeLocked:
@@ -346,6 +355,11 @@ export const translations: Record<Language, Translations> = {
           client: {
             label: "Client (free)",
             description: "Collaborate with your carpenter at no additional cost.",
+          },
+          admin: {
+            label: "Administrator (first account)",
+            description:
+              "Claim the one-time administrator slot to manage billing, teams, and settings.",
           },
         },
         accountTypeLocked:
