@@ -278,9 +278,7 @@ grant execute on function public.accept_carpenter_invitation(invitation_token uu
 create or replace function public.list_carpenter_clients()
 returns table (
   client_id uuid,
-  client_email text,
-  avatar_type text,
-  avatar_path text
+  client_email text
 )
 language sql
 security definer
@@ -288,12 +286,8 @@ set search_path = public
 as $$
   select
     cc.client_id,
-    au.email as client_email,
-    p.avatar_type,
-    p.avatar_path
+    au.email as client_email
   from public.carpenter_clients cc
-  join public.profiles p
-    on p.id = cc.client_id
   join auth.users au
     on au.id = cc.client_id
   where cc.carpenter_id = auth.uid();
@@ -305,9 +299,7 @@ grant execute on function public.list_carpenter_clients() to authenticated;
 create or replace function public.get_assigned_carpenter()
 returns table (
   carpenter_id uuid,
-  carpenter_email text,
-  avatar_type text,
-  avatar_path text
+  carpenter_email text
 )
 language sql
 security definer
@@ -315,12 +307,8 @@ set search_path = public
 as $$
   select
     cc.carpenter_id,
-    au.email as carpenter_email,
-    p.avatar_type,
-    p.avatar_path
+    au.email as carpenter_email
   from public.carpenter_clients cc
-  join public.profiles p
-    on p.id = cc.carpenter_id
   join auth.users au
     on au.id = cc.carpenter_id
   where cc.client_id = auth.uid()
@@ -334,8 +322,6 @@ create or replace function public.list_active_carpenters()
 returns table (
   carpenter_id uuid,
   carpenter_email text,
-  avatar_type text,
-  avatar_path text,
   subscription_expires_at timestamptz
 )
 language sql
@@ -345,8 +331,6 @@ as $$
   select
     p.id as carpenter_id,
     au.email as carpenter_email,
-    p.avatar_type,
-    p.avatar_path,
     p.subscription_expires_at
   from public.profiles p
   join auth.users au
