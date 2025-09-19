@@ -7,6 +7,25 @@ type SectionContent = {
   imageAlt: string;
 };
 
+type ProtectedFeatureContent = {
+  title: string;
+  description: string;
+  highlights: string[];
+  callToAction: string;
+};
+
+type ProtectedPagesContent = {
+  badge: string;
+  unauthorizedTitle: string;
+  unauthorizedDescription: string;
+  goBackCta: string;
+  features: {
+    wycena: ProtectedFeatureContent;
+    formatki: ProtectedFeatureContent;
+    project: ProtectedFeatureContent;
+  };
+};
+
 type Translations = {
   navigation: {
     meble: string;
@@ -14,6 +33,13 @@ type Translations = {
     wycena: string;
     formatki: string;
     play: string;
+  };
+  authenticatedNavigation: {
+    meble: string;
+    pomieszczenie: string;
+    wycena: string;
+    formatki: string;
+    project: string;
   };
   header: {
     login: string;
@@ -83,6 +109,7 @@ type Translations = {
     rights: string;
     cta: string;
   };
+  protectedPages: ProtectedPagesContent;
 };
 
 export const translations: Record<Language, Translations> = {
@@ -93,6 +120,13 @@ export const translations: Record<Language, Translations> = {
       wycena: "wycena",
       formatki: "formatki",
       play: "zobacz demo",
+    },
+    authenticatedNavigation: {
+      meble: "meble",
+      pomieszczenie: "pomieszczenie",
+      wycena: "wycena",
+      formatki: "formatki",
+      project: "pokaż projekt",
     },
     header: {
       login: "Zaloguj się",
@@ -209,6 +243,48 @@ export const translations: Record<Language, Translations> = {
         imageAlt: "Lista formatek do produkcji",
       },
     },
+    protectedPages: {
+      badge: "panel roboczy",
+      unauthorizedTitle: "Brak dostępu",
+      unauthorizedDescription:
+        "Ta sekcja jest dostępna tylko dla kont administratora oraz stolarza. Skontaktuj się z właścicielem zespołu, aby rozszerzyć uprawnienia.",
+      goBackCta: "Wróć do pulpitu",
+      features: {
+        wycena: {
+          title: "Zaawansowana wycena projektów",
+          description:
+            "Zbieraj wszystkie koszty w jednym miejscu – od materiałów po robociznę – i przygotowuj ofertę gotową do wysłania klientowi.",
+          highlights: [
+            "Twórz własne cenniki materiałów i automatycznie aktualizuj marże.",
+            "Porównuj warianty ofert, aby szybko dopasować budżet do oczekiwań klienta.",
+            "Eksportuj kosztorys wraz z wizualizacjami do PDF lub CSV jednym kliknięciem.",
+          ],
+          callToAction: "Przejdź do pulpitu",
+        },
+        formatki: {
+          title: "Generator formatek produkcyjnych",
+          description:
+            "Opracuj kompletne listy cięć i obrzeży bez ręcznego liczenia – system wygeneruje je na podstawie zaakceptowanego projektu.",
+          highlights: [
+            "Przygotowuj listy elementów z podziałem na płyty, fronty i akcesoria.",
+            "Eksportuj formatki do plików CSV kompatybilnych z maszynami CNC.",
+            "Udostępniaj zestawienia ekipie produkcyjnej lub partnerom logistycznym.",
+          ],
+          callToAction: "Otwórz panel formatek",
+        },
+        project: {
+          title: "Prezentacja projektu dla klienta",
+          description:
+            "Zaprezentuj gotowy projekt w czytelnej formie, aby klient mógł przejrzeć wizualizacje, szczegóły oraz status realizacji.",
+          highlights: [
+            "Udostępniaj interaktywny widok 3D oraz wizualizacje poglądowe.",
+            "Dodawaj komentarze i aktualizacje, aby ułatwić komunikację z klientem.",
+            "Zapisuj wszystkie pliki projektu w jednym, uporządkowanym miejscu.",
+          ],
+          callToAction: "Wróć do pulpitu",
+        },
+      },
+    },
     footer: {
       rights: "Wszelkie prawa zastrzeżone.",
       cta: "Załóż konto",
@@ -221,6 +297,13 @@ export const translations: Record<Language, Translations> = {
       wycena: "pricing",
       formatki: "cut lists",
       play: "view demo",
+    },
+    authenticatedNavigation: {
+      meble: "furniture",
+      pomieszczenie: "workspace",
+      wycena: "pricing",
+      formatki: "cut lists",
+      project: "show project",
     },
     header: {
       login: "Log in",
@@ -335,6 +418,48 @@ export const translations: Record<Language, Translations> = {
           "Production schedule synchronized with your calendar",
         ],
         imageAlt: "Cut lists prepared for production",
+      },
+    },
+    protectedPages: {
+      badge: "workspace tools",
+      unauthorizedTitle: "Access restricted",
+      unauthorizedDescription:
+        "This area is available only to administrator and carpenter accounts. Contact your workspace owner if you need additional permissions.",
+      goBackCta: "Return to dashboard",
+      features: {
+        wycena: {
+          title: "Advanced project pricing",
+          description:
+            "Track every cost component—from materials to labor—and deliver a polished offer ready for your client.",
+          highlights: [
+            "Build custom material price lists and keep margins up to date automatically.",
+            "Compare offer variants to match the customer's expectations and budget.",
+            "Export estimates with visualizations to PDF or CSV in a single click.",
+          ],
+          callToAction: "Back to dashboard",
+        },
+        formatki: {
+          title: "Production cut-list generator",
+          description:
+            "Create complete cutting and edging lists without manual calculations—everything is based on the approved design.",
+          highlights: [
+            "Prepare itemized lists grouped by boards, fronts, and hardware.",
+            "Export cut lists to CNC-friendly CSV files.",
+            "Share production packages with your workshop or logistics partners.",
+          ],
+          callToAction: "Open cut-list workspace",
+        },
+        project: {
+          title: "Project presentation for clients",
+          description:
+            "Showcase the finalized design in a clear layout so clients can review visuals, details, and progress updates.",
+          highlights: [
+            "Share interactive 3D views and illustrative visualizations.",
+            "Add comments and status updates to streamline collaboration.",
+            "Store every project document in a single, organized place.",
+          ],
+          callToAction: "Return to dashboard",
+        },
       },
     },
     footer: {
