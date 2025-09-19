@@ -95,60 +95,9 @@ create trigger profiles_set_defaults
   before insert on public.profiles
   for each row execute function public.profiles_set_defaults();
 
--- Prevent regular users from extending their own subscription timestamp or promoting themselves
--- while still updating the audit column.
-create or replace function public.profiles_lock_subscription()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  jwt_role text := current_setting('request.jwt.claim.role', true);
-  is_privileged boolean := jwt_role in ('service_role', 'supabase_admin');
-  requested_account_type public.account_type := coalesce(new.account_type, old.account_type);
-  is_owner boolean := auth.uid() = new.id;
-  allow_admin_bootstrap boolean := coalesce(current_setting('meblomat.allow_admin_bootstrap', true), 'false') = 'true';
-  allow_owner_admin_bootstrap boolean := allow_admin_bootstrap
-    and is_owner
-    and requested_account_type = 'admin'::public.account_type;
-  allow_owner_carpenter_upgrade boolean := is_owner
-    and old.account_type = 'client'::public.account_type
-    and requested_account_type = 'carpenter'::public.account_type;
-begin
-  new.updated_at := timezone('utc', now());
-
-  if not is_privileged then
-    new.subscription_expires_at := old.subscription_expires_at;
-  elsif new.subscription_expires_at is null then
-    new.subscription_expires_at := old.subscription_expires_at;
-  end if;
-
-  if new.account_type is null then
-    new.account_type := old.account_type;
-  end if;
-
-  if not is_privileged then
-    if allow_owner_admin_bootstrap then
-      new.account_type := 'admin'::public.account_type;
-    elsif allow_owner_carpenter_upgrade then
-      new.account_type := 'carpenter'::public.account_type;
-    else
-      new.account_type := old.account_type;
-    end if;
-  elsif new.account_type is null then
-    new.account_type := old.account_type;
-  end if;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists profiles_lock_subscription on public.profiles;
-create trigger profiles_lock_subscription
-  before update on public.profiles
-  for each row execute function public.profiles_lock_subscription();
-
+-- Allow a freshly verified user to claim the administrator role when no other
+-- admins exist, and adjust the profile update trigger so the RPC can perform
+-- the promotion without weakening the existing guards.
 create or replace function public.bootstrap_admin(promote boolean default false)
 returns jsonb
 language plpgsql
@@ -206,6 +155,60 @@ end;
 $$;
 
 grant execute on function public.bootstrap_admin(boolean) to anon, authenticated, service_role;
+
+-- Prevent regular users from extending their own subscription timestamp or promoting themselves
+-- while still updating the audit column.
+create or replace function public.profiles_lock_subscription()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  jwt_role text := current_setting('request.jwt.claim.role', true);
+  is_privileged boolean := jwt_role in ('service_role', 'supabase_admin');
+  requested_account_type public.account_type := coalesce(new.account_type, old.account_type);
+  is_owner boolean := auth.uid() = new.id;
+  allow_admin_bootstrap boolean := coalesce(current_setting('meblomat.allow_admin_bootstrap', true), 'false') = 'true';
+  allow_owner_admin_bootstrap boolean := allow_admin_bootstrap
+    and is_owner
+    and requested_account_type = 'admin'::public.account_type;
+  allow_owner_carpenter_upgrade boolean := is_owner
+    and old.account_type = 'client'::public.account_type
+    and requested_account_type = 'carpenter'::public.account_type;
+begin
+  new.updated_at := timezone('utc', now());
+
+  if not is_privileged then
+    new.subscription_expires_at := old.subscription_expires_at;
+  elsif new.subscription_expires_at is null then
+    new.subscription_expires_at := old.subscription_expires_at;
+  end if;
+
+  if new.account_type is null then
+    new.account_type := old.account_type;
+  end if;
+
+  if not is_privileged then
+    if allow_owner_admin_bootstrap then
+      new.account_type := 'admin'::public.account_type;
+    elsif allow_owner_carpenter_upgrade then
+      new.account_type := 'carpenter'::public.account_type;
+    else
+      new.account_type := old.account_type;
+    end if;
+  elsif new.account_type is null then
+    new.account_type := old.account_type;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_lock_subscription on public.profiles;
+create trigger profiles_lock_subscription
+  before update on public.profiles
+  for each row execute function public.profiles_lock_subscription();
 
 -- Automatically create a profile row whenever Supabase adds an auth user.
 create or replace function public.handle_new_user_profile()
