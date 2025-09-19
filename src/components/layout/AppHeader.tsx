@@ -13,23 +13,17 @@ import { translations } from "@/lib/i18n";
 
 import { UserAvatar } from "./UserAvatar";
 
-type NavigationKey =
-  | "meble"
-  | "pomieszczenie"
-  | "wycena"
-  | "formatki"
-  | "play"
-  | "project";
-
 type PanelKey = "meble" | "pomieszczenie";
+type RestrictedLinkKey = "wycena" | "formatki" | "project";
+type PublicNavigationKey = PanelKey | "wycena" | "formatki" | "play";
 
 type AuthenticatedNavigationItem =
   | { key: PanelKey; type: "panel"; panel: PanelKey }
-  | { key: "wycena" | "formatki" | "project"; type: "link"; href: string };
+  | { key: RestrictedLinkKey; type: "link"; href: string };
 
 type NavigationLink = {
   href: string;
-  key: NavigationKey;
+  key: PublicNavigationKey;
   withIcon?: boolean;
 };
 

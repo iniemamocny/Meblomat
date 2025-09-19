@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import type { AccountType } from "@/lib/avatar";
 
+import { getSupabaseConfig } from "./env";
 import { createSupabaseServerClient } from "./supabaseServer";
 
 type ProfileRow = {
@@ -15,6 +16,12 @@ export type AuthenticatedUser = {
 };
 
 export async function requireAuthenticatedUser(): Promise<AuthenticatedUser> {
+  const supabaseConfig = getSupabaseConfig();
+
+  if (!supabaseConfig) {
+    redirect("/auth/login");
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
