@@ -623,6 +623,17 @@ reset request.jwt.claim.role;
 reset request.jwt.claim.sub;
 ```
 
+> ⚠️ Highlight the entire block above (from the first `set` through the `reset` statements) before clicking **Run** in the SQL editor. Supabase may recycle the session between individual executions, which clears the temporary claims and leaves `auth.uid()` empty.
+
+If the account has not been verified yet, update `auth.users.email_confirmed_at` for that row before impersonating it so the profile matches what the production onboarding flow expects:
+
+```sql
+-- Replace the UUID with the same verified user's id before running the update.
+update auth.users
+set email_confirmed_at = now()
+where id = '00000000-0000-0000-0000-000000000000';
+```
+
 If you see `ERROR: 42501: You must be authenticated to claim the administrator role`, double-check that you replaced the UUID and executed the entire block together so the claims were active when `public.bootstrap_admin(true)` ran.
 
 Once the first admin is established, the RPC keeps returning a non-zero `admin_count`, the registration form hides the option, and all subsequent promotions must be performed through privileged service-role access.
