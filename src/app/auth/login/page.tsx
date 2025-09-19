@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { useLanguage } from "@/components/providers/LanguageProvider";
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { translations } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const { login: loginTexts } = translations[language].auth;
   const isSupabaseConfigured = isSupabaseConfiguredOnClient();
   const supabase = useMemo(
     () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
@@ -56,16 +60,14 @@ export default function LoginPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center sm:text-left">
-        <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm/6 text-black/60 dark:text-white/60">
-          Sign in to continue where you left off.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">{loginTexts.title}</h1>
+        <p className="text-sm/6 text-black/60 dark:text-white/60">{loginTexts.description}</p>
       </div>
       <AuthForm view="sign_in" className="space-y-4" />
       <p className="text-sm/6 text-black/60 dark:text-white/60">
-        Don&apos;t have an account?{" "}
+        {loginTexts.noAccountPrompt}{" "}
         <Link className="font-semibold text-black dark:text-white" href="/auth/register">
-          Create one
+          {loginTexts.registerLinkLabel}
         </Link>
         .
       </p>

@@ -4,6 +4,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { useLanguage } from "@/components/providers/LanguageProvider";
+import { translations } from "@/lib/i18n";
+
 const EMAIL_REDIRECT_PATH = "/auth/verify";
 
 type AccountType = "carpenter" | "client";
@@ -31,6 +34,8 @@ function resolveForcedAccountType(
 export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { language } = useLanguage();
+  const formTexts = translations[language].auth.signUpForm;
   const invitationToken = searchParams?.get("invitation") ?? undefined;
   const accountParam = searchParams?.get("account") ?? null;
   const forcedAccountType = resolveForcedAccountType(invitationToken, accountParam);
@@ -72,12 +77,12 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
     setStatusMessage(null);
 
     if (!email.trim()) {
-      setFormError("Email is required.");
+      setFormError(formTexts.errors.emailRequired);
       return;
     }
 
     if (!password) {
-      setFormError("Password is required.");
+      setFormError(formTexts.errors.passwordRequired);
       return;
     }
 
@@ -108,7 +113,7 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
 
       if (session) {
         if (!user) {
-          setFormError("Registration failed.");
+          setFormError(formTexts.errors.registrationFailed);
           return;
         }
 
@@ -140,11 +145,10 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
         return;
       }
 
-      setStatusMessage(
-        "Check your email for a confirmation link to finish setting up your account.",
-      );
+      setStatusMessage(formTexts.status.checkEmail);
     } catch (unknownError) {
-      setFormError(unknownError instanceof Error ? unknownError.message : "Registration failed.");
+      const fallbackError = formTexts.errors.registrationFailed;
+      setFormError(unknownError instanceof Error ? unknownError.message : fallbackError);
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +158,7 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
       <div className="space-y-2">
         <label className="text-sm font-medium text-black dark:text-white" htmlFor="email">
-          Email
+          {formTexts.emailLabel}
         </label>
         <input
           id="email"
@@ -169,7 +173,7 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-black dark:text-white" htmlFor="password">
-          Password
+          {formTexts.passwordLabel}
         </label>
         <input
           id="password"
@@ -183,7 +187,9 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-black dark:text-white">Account type</legend>
+        <legend className="text-sm font-medium text-black dark:text-white">
+          {formTexts.accountTypeLegend}
+        </legend>
         <div className="space-y-2">
           <label className="flex cursor-pointer items-center gap-3 rounded-md border border-black/10 bg-white p-3 transition hover:border-black/30 dark:border-white/20 dark:bg-black dark:hover:border-white/40">
             <input
@@ -195,9 +201,11 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
               disabled={Boolean(forcedAccountType)}
             />
             <div>
-              <p className="text-sm font-medium text-black dark:text-white">stolarz (subscription)</p>
+              <p className="text-sm font-medium text-black dark:text-white">
+                {formTexts.accountTypes.carpenter.label}
+              </p>
               <p className="text-sm text-black/60 dark:text-white/60">
-                Unlock all professional features with a paid carpenter plan.
+                {formTexts.accountTypes.carpenter.description}
               </p>
             </div>
           </label>
@@ -211,16 +219,18 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
               disabled={Boolean(forcedAccountType)}
             />
             <div>
-              <p className="text-sm font-medium text-black dark:text-white">klient (free)</p>
+              <p className="text-sm font-medium text-black dark:text-white">
+                {formTexts.accountTypes.client.label}
+              </p>
               <p className="text-sm text-black/60 dark:text-white/60">
-                Collaborate with your carpenter at no additional cost.
+                {formTexts.accountTypes.client.description}
               </p>
             </div>
           </label>
         </div>
         {forcedAccountType ? (
           <p className="text-xs text-black/60 dark:text-white/60">
-            Your account type is locked because you are joining from an invitation.
+            {formTexts.accountTypeLocked}
           </p>
         ) : null}
       </fieldset>
@@ -242,7 +252,7 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
         className="inline-flex w-full items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/40 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/30 dark:disabled:bg-white/40"
         disabled={isSubmitting}
       >
-        {isSubmitting ? "Creating account…" : "Create account"}
+        {isSubmitting ? formTexts.submit.submitting : formTexts.submit.default}
       </button>
     </form>
   );

@@ -23,6 +23,48 @@ type Translations = {
     languageShort: Record<Language, string>;
     brand: string;
   };
+  auth: {
+    login: {
+      title: string;
+      description: string;
+      noAccountPrompt: string;
+      registerLinkLabel: string;
+    };
+    register: {
+      title: string;
+      description: string;
+      hasAccountPrompt: string;
+      loginLinkLabel: string;
+    };
+    signUpForm: {
+      emailLabel: string;
+      passwordLabel: string;
+      accountTypeLegend: string;
+      accountTypes: {
+        carpenter: {
+          label: string;
+          description: string;
+        };
+        client: {
+          label: string;
+          description: string;
+        };
+      };
+      accountTypeLocked: string;
+      errors: {
+        emailRequired: string;
+        passwordRequired: string;
+        registrationFailed: string;
+      };
+      status: {
+        checkEmail: string;
+      };
+      submit: {
+        default: string;
+        submitting: string;
+      };
+    };
+  };
   hero: {
     badge: string;
     heading: string;
@@ -65,6 +107,52 @@ export const translations: Record<Language, Translations> = {
         en: "EN",
       },
       brand: "Meblomat",
+    },
+    auth: {
+      login: {
+        title: "Witamy ponownie",
+        description: "Zaloguj się, aby kontynuować pracę.",
+        noAccountPrompt: "Nie masz jeszcze konta?",
+        registerLinkLabel: "Utwórz je",
+      },
+      register: {
+        title: "Utwórz konto",
+        description:
+          "Zarejestruj się przy użyciu adresu e-mail – wyślemy link potwierdzający.",
+        hasAccountPrompt: "Masz już konto?",
+        loginLinkLabel: "Zaloguj się",
+      },
+      signUpForm: {
+        emailLabel: "Adres e-mail",
+        passwordLabel: "Hasło",
+        accountTypeLegend: "Typ konta",
+        accountTypes: {
+          carpenter: {
+            label: "Stolarz (abonament)",
+            description:
+              "Odblokuj wszystkie funkcje profesjonalne w płatnym planie dla stolarzy.",
+          },
+          client: {
+            label: "Klient (bezpłatnie)",
+            description: "Współpracuj ze swoim stolarzem bez dodatkowych kosztów.",
+          },
+        },
+        accountTypeLocked:
+          "Nie możesz zmienić typu konta, ponieważ dołączasz z zaproszenia.",
+        errors: {
+          emailRequired: "Adres e-mail jest wymagany.",
+          passwordRequired: "Hasło jest wymagane.",
+          registrationFailed: "Rejestracja nie powiodła się.",
+        },
+        status: {
+          checkEmail:
+            "Sprawdź skrzynkę e-mail i kliknij link potwierdzający, aby dokończyć zakładanie konta.",
+        },
+        submit: {
+          default: "Utwórz konto",
+          submitting: "Tworzenie konta…",
+        },
+      },
     },
     hero: {
       badge: "kreator zabudowy stolarskiej",
@@ -147,6 +235,52 @@ export const translations: Record<Language, Translations> = {
         en: "EN",
       },
       brand: "Meblomat",
+    },
+    auth: {
+      login: {
+        title: "Welcome back",
+        description: "Sign in to continue where you left off.",
+        noAccountPrompt: "Don't have an account?",
+        registerLinkLabel: "Create one",
+      },
+      register: {
+        title: "Create your account",
+        description:
+          "Register with your email address and we'll send a confirmation link.",
+        hasAccountPrompt: "Already have an account?",
+        loginLinkLabel: "Sign in",
+      },
+      signUpForm: {
+        emailLabel: "Email",
+        passwordLabel: "Password",
+        accountTypeLegend: "Account type",
+        accountTypes: {
+          carpenter: {
+            label: "Carpenter (subscription)",
+            description:
+              "Unlock all professional features with a paid carpenter plan.",
+          },
+          client: {
+            label: "Client (free)",
+            description: "Collaborate with your carpenter at no additional cost.",
+          },
+        },
+        accountTypeLocked:
+          "Your account type is locked because you are joining from an invitation.",
+        errors: {
+          emailRequired: "Email is required.",
+          passwordRequired: "Password is required.",
+          registrationFailed: "Registration failed.",
+        },
+        status: {
+          checkEmail:
+            "Check your email for a confirmation link to finish setting up your account.",
+        },
+        submit: {
+          default: "Create account",
+          submitting: "Creating account…",
+        },
+      },
     },
     hero: {
       badge: "cabinetry design suite",
