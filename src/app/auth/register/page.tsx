@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
+import { useLanguage } from "@/components/providers/LanguageProvider";
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { translations } from "@/lib/i18n";
 
 import { SignUpForm } from "./SignUpForm";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const { register: registerTexts } = translations[language].auth;
   const isSupabaseConfigured = isSupabaseConfiguredOnClient();
   const supabase = useMemo(
     () => (isSupabaseConfigured ? createSupabaseBrowserClient() : null),
@@ -61,10 +65,8 @@ export default function RegisterPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center sm:text-left">
-        <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
-        <p className="text-sm/6 text-black/60 dark:text-white/60">
-          Register with your email address and we&apos;ll send a confirmation link.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">{registerTexts.title}</h1>
+        <p className="text-sm/6 text-black/60 dark:text-white/60">{registerTexts.description}</p>
       </div>
       <Suspense
         fallback={
@@ -88,9 +90,9 @@ export default function RegisterPage() {
         <SignUpForm supabase={supabase} />
       </Suspense>
       <p className="text-sm/6 text-black/60 dark:text-white/60">
-        Already have an account?{" "}
+        {registerTexts.hasAccountPrompt}{" "}
         <Link className="font-semibold text-black dark:text-white" href="/auth/login">
-          Sign in
+          {registerTexts.loginLinkLabel}
         </Link>
         .
       </p>
