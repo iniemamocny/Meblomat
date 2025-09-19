@@ -250,11 +250,6 @@ begin
     raise exception 'Invitation not found';
   end if;
 
-  if invitation_record.accepted_at is not null then
-    return query
-    select invitation_record.carpenter_id, current_client;
-  end if;
-
   if invitation_record.expires_at <= timezone('utc', now()) then
     raise exception 'Invitation expired';
   end if;
@@ -263,9 +258,11 @@ begin
   values (invitation_record.carpenter_id, current_client)
   on conflict (carpenter_id, client_id) do nothing;
 
-  update public.carpenter_invitations
-  set accepted_at = timezone('utc', now())
-  where token = invitation_token;
+  if invitation_record.accepted_at is null then
+    update public.carpenter_invitations
+    set accepted_at = timezone('utc', now())
+    where token = invitation_token;
+  end if;
 
   return query
   select invitation_record.carpenter_id, current_client;
