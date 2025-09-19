@@ -37,14 +37,6 @@ begin
     new.subscription_expires_at := timezone('utc', now()) + interval '14 days';
   end if;
 
-  if new.avatar_type is null then
-    new.avatar_type := 'icon';
-  end if;
-
-  if new.avatar_path is null then
-    new.avatar_path := 'user';
-  end if;
-
   if new.account_type is null then
     new.account_type := 'client';
   end if;
