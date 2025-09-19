@@ -16,6 +16,54 @@ export type ActiveCarpenter = {
   subscriptionExpiresAt: string | null;
 };
 
+export async function getCarpenterReferralLink(supabase: SupabaseClient) {
+  const { data, error } = await supabase.rpc("get_carpenter_referral_link");
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error("Referral link is not available yet.");
+  }
+
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    const record = data[0];
+
+    if (!record) {
+      throw new Error("Referral link is not available yet.");
+    }
+
+    if (typeof record === "string") {
+      return record;
+    }
+
+    if (
+      record &&
+      typeof record === "object" &&
+      "referral_token" in record &&
+      typeof (record as Record<string, unknown>).referral_token === "string"
+    ) {
+      return (record as Record<string, string>).referral_token;
+    }
+  }
+
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "referral_token" in data &&
+    typeof (data as Record<string, unknown>).referral_token === "string"
+  ) {
+    return (data as Record<string, string>).referral_token;
+  }
+
+  throw new Error("Referral link is not available yet.");
+}
+
 export async function listCarpenterClients(supabase: SupabaseClient) {
   const { data, error } = await supabase.rpc("list_carpenter_clients");
 
