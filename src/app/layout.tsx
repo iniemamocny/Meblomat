@@ -1,5 +1,6 @@
 import AppFooter from "@/components/layout/AppFooter";
 import AppHeader from "@/components/layout/AppHeader";
+import { LanguageProvider } from "@/components/providers/LanguageProvider";
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -14,13 +15,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pl">
       <body className="font-sans bg-[var(--background)] text-[var(--foreground)] antialiased">
-        <div className="flex min-h-screen flex-col">
-          <AppHeader />
-          <main className="flex flex-1 flex-col">{children}</main>
-          <AppFooter />
-        </div>
+        <LanguageProvider>
+          <div className="flex min-h-screen flex-col">
+            <AppHeader />
+            <main className="flex flex-1 flex-col">{children}</main>
+            <AppFooter />
+          </div>
+        </LanguageProvider>
       </body>
     </html>
   );
