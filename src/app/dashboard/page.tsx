@@ -25,8 +25,6 @@ import {
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
-type AccountType = "carpenter" | "client" | "admin";
-
 type ProfileRow = {
   subscription_expires_at: string | null;
   account_type: AccountType | null;
