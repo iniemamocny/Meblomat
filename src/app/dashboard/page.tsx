@@ -58,13 +58,28 @@ function parseDate(value: string | null | undefined) {
 
 function formatDateTime(value: Date | null) {
   if (!value) {
-    return "Not available";
+    return "Brak danych";
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("pl-PL", {
     dateStyle: "long",
     timeStyle: "short",
   }).format(value);
+}
+
+function formatProjectCountLabel(count: number) {
+  const remainder10 = count % 10;
+  const remainder100 = count % 100;
+
+  if (count === 1) {
+    return "projekt";
+  }
+
+  if (remainder10 >= 2 && remainder10 <= 4 && (remainder100 < 12 || remainder100 > 14)) {
+    return "projekty";
+  }
+
+  return "projektów";
 }
 
 export default function DashboardPage() {
@@ -284,7 +299,7 @@ export default function DashboardPage() {
         setDashboardError(
           error instanceof Error
             ? error.message
-            : "We couldn't load your collaboration data.",
+            : "Nie udało się wczytać danych współpracy.",
         );
 
         return;
@@ -310,7 +325,7 @@ export default function DashboardPage() {
         setReferralLinkError(
           error instanceof Error
             ? error.message
-            : "We couldn't load your referral link.",
+            : "Nie udało się wczytać linku polecającego.",
         );
       }
     },
@@ -373,7 +388,7 @@ export default function DashboardPage() {
         setDashboardError(
           error instanceof Error
             ? error.message
-            : "We couldn't load your collaboration data.",
+            : "Nie udało się wczytać danych współpracy.",
         );
       }
     },
@@ -435,7 +450,7 @@ export default function DashboardPage() {
       const normalizedEmail = invitationEmail.trim();
 
       if (!normalizedEmail) {
-        setInvitationError("Enter an email address to invite a client.");
+        setInvitationError("Wpisz adres e-mail, aby zaprosić klienta.");
         return;
       }
 
@@ -466,7 +481,7 @@ export default function DashboardPage() {
         setDashboardError(
           error instanceof Error
             ? error.message
-            : "We couldn't create a new invitation.",
+            : "Nie udało się utworzyć nowego zaproszenia.",
         );
       } finally {
         setIsInvitationSubmitting(false);
@@ -493,7 +508,7 @@ export default function DashboardPage() {
     ) {
       setHasCopiedReferralLink(false);
       setReferralCopyError(
-        "Copy isn't available in this environment. Use the link below instead.",
+        "Kopiowanie nie jest dostępne w tym środowisku. Skorzystaj z linku poniżej.",
       );
 
       return;
@@ -506,7 +521,7 @@ export default function DashboardPage() {
     } catch {
       setHasCopiedReferralLink(false);
       setReferralCopyError(
-        "We couldn't copy the link automatically. Try copying it manually.",
+        "Nie udało się automatycznie skopiować linku. Skopiuj go ręcznie.",
       );
     }
   }, [referralShareLink]);
@@ -642,7 +657,7 @@ export default function DashboardPage() {
   if (!isSupabaseConfigured) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-16">
-        <SupabaseEnvWarning description="Add your Supabase credentials to load account and subscription details." />
+        <SupabaseEnvWarning description="Dodaj dane logowania Supabase, aby wczytać informacje o koncie i subskrypcji." />
       </div>
     );
   }
@@ -651,9 +666,9 @@ export default function DashboardPage() {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-16">
         <header className="space-y-2">
-          <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-4xl font-semibold tracking-tight">Panel główny</h1>
           <p className="text-base text-black/60 dark:text-white/60">
-            Loading your account details…
+            Wczytywanie danych konta…
           </p>
         </header>
       </div>
@@ -665,35 +680,35 @@ export default function DashboardPage() {
   if (profileError) {
     if (isProfileMissing) {
       warning = {
-        title: "Finish configuring Supabase",
+        title: "Dokończ konfigurację Supabase",
         description:
-          "We couldn't find your profile data. Apply the SQL from docs/supabase-setup.md so the profiles table and defaults exist.",
+          "Nie znaleźliśmy danych Twojego profilu. Uruchom skrypt SQL z docs/supabase-setup.md, aby utworzyć tabelę profiles oraz wartości domyślne.",
       };
     } else {
       warning = {
-        title: "Subscription details unavailable",
+        title: "Szczegóły subskrypcji są niedostępne",
         description:
-          "We couldn't load your subscription information. Please try again later.",
+          "Nie udało się wczytać informacji o subskrypcji. Spróbuj ponownie później.",
       };
     }
   } else if (!expirationDate) {
     warning = {
-      title: "No active subscription",
+      title: "Brak aktywnej subskrypcji",
       description:
-        "We couldn't find an active subscription for your account. Update your billing details to avoid interruptions.",
+        "Nie znaleźliśmy aktywnej subskrypcji dla Twojego konta. Zaktualizuj dane rozliczeniowe, aby uniknąć przerwy w działaniu usług.",
     };
   } else {
     const timeRemaining = expirationDate.getTime() - now.getTime();
 
     if (timeRemaining <= 0) {
       warning = {
-        title: "Your subscription has expired",
-        description: `Access ended on ${formatDateTime(expirationDate)}. Renew to regain full access to the platform.`,
+        title: "Twoja subskrypcja wygasła",
+        description: `Dostęp zakończył się ${formatDateTime(expirationDate)}. Odnów subskrypcję, aby odzyskać pełny dostęp do platformy.`,
       };
     } else if (timeRemaining <= ONE_WEEK_IN_MS) {
       warning = {
-        title: "Subscription expiring soon",
-        description: `Your subscription will expire on ${formatDateTime(expirationDate)}. Consider renewing to keep your tools running without interruptions.`,
+        title: "Subskrypcja wkrótce wygaśnie",
+        description: `Subskrypcja wygaśnie ${formatDateTime(expirationDate)}. Rozważ jej odnowienie, aby utrzymać ciągłość pracy narzędzi.`,
       };
     }
   }
@@ -709,10 +724,10 @@ export default function DashboardPage() {
     accountType ?? DEFAULT_ACCOUNT_TYPE;
   const accountRoleLabel =
     normalizedAccountType === "admin"
-      ? "administrator"
+      ? "administratora"
       : normalizedAccountType === "carpenter"
-        ? "carpenter"
-        : "client";
+        ? "stolarza"
+        : "klienta";
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-16">
@@ -740,52 +755,52 @@ export default function DashboardPage() {
         <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
           <div className="space-y-8">
             <header className="space-y-2">
-              <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
+              <h1 className="text-4xl font-semibold tracking-tight">Panel główny</h1>
               <p className="text-base text-black/60 dark:text-white/60">
-                Welcome back{userEmail ? `, ${userEmail}` : ""}.
+                Witaj ponownie{userEmail ? `, ${userEmail}` : ""}!
               </p>
             </header>
 
             <section className="grid gap-6 md:grid-cols-2">
               <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                <h2 className="text-lg font-semibold">Account overview</h2>
+                <h2 className="text-lg font-semibold">Podsumowanie konta</h2>
                 <dl className="mt-4 space-y-4 text-sm/6 text-black/70 dark:text-white/70">
                   <div>
-                    <dt className="font-medium text-black dark:text-white">Email</dt>
-                    <dd className="mt-1 break-all">{userEmail ?? "Unknown"}</dd>
+                    <dt className="font-medium text-black dark:text-white">Adres e-mail</dt>
+                    <dd className="mt-1 break-all">{userEmail ?? "Nieznany adres e-mail"}</dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-black dark:text-white">Subscription expires</dt>
+                    <dt className="font-medium text-black dark:text-white">Subskrypcja wygasa</dt>
                     <dd className="mt-1">{formatDateTime(expirationDate)}</dd>
                   </div>
                 </dl>
               </article>
 
               <article className="flex flex-col gap-4 rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                <h2 className="text-lg font-semibold">Quick actions</h2>
+                <h2 className="text-lg font-semibold">Szybkie akcje</h2>
                 <p className="text-sm/6 text-black/60 dark:text-white/60">
-                  Manage your access and keep your account secure.
+                  Zarządzaj dostępem i dbaj o bezpieczeństwo konta.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
                     className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
                     href="/auth/logout"
                   >
-                    Sign out
+                    Wyloguj się
                   </Link>
                   <a
                     className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
                     href="mailto:support@example.com"
                   >
-                    Contact support
+                    Skontaktuj się z pomocą
                   </a>
                 </div>
               </article>
 
               <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
-                <h2 className="text-lg font-semibold">Avatar</h2>
+                <h2 className="text-lg font-semibold">Awatar</h2>
                 <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                  Icons are assigned automatically based on your role in the workspace.
+                  Ikony są przypisywane automatycznie na podstawie roli w przestrzeni roboczej.
                 </p>
                 <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center">
                   <UserAvatar
@@ -795,10 +810,10 @@ export default function DashboardPage() {
                   />
                   <div className="text-sm/6 text-black/60 dark:text-white/60">
                     <p>
-                      You&apos;re currently using the {accountRoleLabel} icon. We&apos;ll update it automatically whenever your access level changes.
+                      Korzystasz obecnie z ikony roli {accountRoleLabel}. Zmienimy ją automatycznie, gdy zmieni się Twój poziom dostępu.
                     </p>
                     <p className="mt-1">
-                      No manual action is required—just keep your account details up to date.
+                      Nie musisz wykonywać dodatkowych działań — zadbaj jedynie o aktualność danych konta.
                     </p>
                   </div>
                 </div>
@@ -814,10 +829,10 @@ export default function DashboardPage() {
           <p className="mt-2 text-sm/6">{warning.description}</p>
         </div>
       ) : null}
-      
+
       {dashboardError ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-5 text-red-800 dark:border-red-400/60 dark:bg-red-400/10 dark:text-red-100">
-          <h2 className="text-lg font-semibold">Collaboration data unavailable</h2>
+          <h2 className="text-lg font-semibold">Dane współpracy są niedostępne</h2>
           <p className="mt-2 text-sm/6">{dashboardError}</p>
         </div>
       ) : null}
@@ -1026,14 +1041,14 @@ export default function DashboardPage() {
             <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
               <div className="space-y-6">
                 <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                  <h2 className="text-lg font-semibold">Invite clients</h2>
+                  <h2 className="text-lg font-semibold">Zaproś klientów</h2>
                   <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                    Share your reusable referral link or generate a one-off invitation for a specific email address.
+                    Udostępnij stały link polecający lub wygeneruj jednorazowe zaproszenie dla konkretnego adresu e-mail.
                   </p>
                   <div className="mt-4 space-y-4">
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-400/10 dark:text-emerald-100">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-medium">Reusable referral link</p>
+                        <p className="text-sm font-medium">Stały link polecający</p>
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-300/40 dark:bg-transparent dark:text-emerald-100 dark:hover:bg-emerald-400/20 dark:focus:ring-emerald-200/40"
@@ -1041,7 +1056,7 @@ export default function DashboardPage() {
                           disabled={!isReferralLinkReady}
                           aria-describedby={referralLinkDescriptionId}
                         >
-                          {hasCopiedReferralLink ? "Copied" : "Copy link"}
+                          {hasCopiedReferralLink ? "Skopiowano" : "Kopiuj link"}
                         </button>
                       </div>
                       <p
@@ -1050,11 +1065,11 @@ export default function DashboardPage() {
                       >
                         {referralLinkError
                           ? referralLinkError
-                          : referralShareLink ?? "Generating your referral link…"}
+                          : referralShareLink ?? "Trwa generowanie linku polecającego…"}
                       </p>
                       {hasCopiedReferralLink ? (
                         <p className="mt-2 text-sm font-medium text-emerald-900 dark:text-emerald-100" aria-live="polite">
-                          Link copied to clipboard.
+                          Link skopiowany do schowka.
                         </p>
                       ) : null}
                       {referralCopyError ? (
@@ -1069,11 +1084,11 @@ export default function DashboardPage() {
                           className="text-sm font-medium text-black dark:text-white"
                           htmlFor="invitation-email"
                         >
-                          Client email
+                          Adres e-mail klienta
                         </label>
-                      <input
-                        id="invitation-email"
-                        type="email"
+                        <input
+                          id="invitation-email"
+                          type="email"
                         autoComplete="email"
                         className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-base text-black outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/20 dark:border-white/20 dark:bg-black dark:text-white dark:focus:border-white/40 dark:focus:ring-white/20"
                         value={invitationEmail}
@@ -1088,7 +1103,7 @@ export default function DashboardPage() {
 
                     {invitationLink ? (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-400/10 dark:text-emerald-100">
-                        <p className="text-sm font-medium">Share this link with your client:</p>
+                        <p className="text-sm font-medium">Przekaż ten link klientowi:</p>
                         <p className="mt-1 break-all font-mono text-sm">{invitationLink}</p>
                       </div>
                     ) : null}
@@ -1098,16 +1113,16 @@ export default function DashboardPage() {
                       className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/40 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:focus:ring-white/30 dark:disabled:bg-white/40"
                       disabled={isInvitationSubmitting}
                     >
-                      {isInvitationSubmitting ? "Generating link…" : "Generate invitation"}
+                      {isInvitationSubmitting ? "Generowanie linku…" : "Utwórz zaproszenie"}
                     </button>
                   </form>
                 </div>
                 </article>
 
                 <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                  <h2 className="text-lg font-semibold">Pending invitations</h2>
+                  <h2 className="text-lg font-semibold">Oczekujące zaproszenia</h2>
                   <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                    Track outstanding invitations that are waiting to be accepted.
+                    Monitoruj otwarte zaproszenia, które czekają na akceptację.
                   </p>
                   {pendingInvitations.length > 0 ? (
                     <ul className="mt-4 space-y-4">
@@ -1128,14 +1143,14 @@ export default function DashboardPage() {
                                   {invitation.invitedEmail}
                                 </p>
                                 <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
-                                  Expires {formatDateTime(expires)}
+                                  Wygasa: {formatDateTime(expires)}
                                 </p>
                               </div>
                               <Link
                                 className="text-sm font-medium text-black underline-offset-4 hover:underline dark:text-white"
                                 href={`/invite/${invitation.token}`}
                               >
-                                Open invite
+                                Otwórz zaproszenie
                               </Link>
                             </div>
                             <p className="mt-2 break-all text-xs font-mono text-black/60 dark:text-white/60">
@@ -1147,15 +1162,15 @@ export default function DashboardPage() {
                     </ul>
                   ) : (
                     <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                      You don&apos;t have any pending invitations. Generate a new link to start collaborating with a client.
+                      Nie masz obecnie żadnych oczekujących zaproszeń. Wygeneruj nowy link, aby rozpocząć współpracę z klientem.
                     </p>
                   )}
                 </article>
 
                 <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                  <h2 className="text-lg font-semibold">Project briefs</h2>
+                  <h2 className="text-lg font-semibold">Briefy projektowe</h2>
                   <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                    Monitor the latest ideas your clients have shared and keep track of their status.
+                    Monitoruj najnowsze pomysły przekazane przez klientów i śledź status ich realizacji.
                   </p>
                   {projects.length > 0 ? (
                     <ul className="mt-4 space-y-4">
@@ -1187,7 +1202,7 @@ export default function DashboardPage() {
                               </span>
                             </div>
                             <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
-                              Submitted {formatDateTime(submitted)}
+                              Wysłano {formatDateTime(submitted)}
                             </p>
                           </li>
                         );
@@ -1195,7 +1210,7 @@ export default function DashboardPage() {
                     </ul>
                   ) : (
                     <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                      You haven&apos;t received any briefs yet. Clients will appear here after they send their first project.
+                      Nie otrzymałeś jeszcze żadnych briefów. Klienci pojawią się tutaj po wysłaniu pierwszego projektu.
                     </p>
                   )}
                 </article>
@@ -1224,9 +1239,9 @@ export default function DashboardPage() {
             <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
               <div className="space-y-6">
                 <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                  <h2 className="text-lg font-semibold">Assigned clients</h2>
+                  <h2 className="text-lg font-semibold">Przypisani klienci</h2>
                   <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                    Review the clients connected to your workspace and see the latest briefs they have submitted.
+                    Przeglądaj klientów powiązanych z Twoim kontem i sprawdzaj, jakie briefy złożyli ostatnio.
                   </p>
                   {carpenterClients.length > 0 ? (
                     <ul className="mt-4 space-y-5">
@@ -1241,14 +1256,14 @@ export default function DashboardPage() {
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div>
                                 <p className="text-sm font-semibold text-black dark:text-white">
-                                  {client.clientEmail ?? "Client"}
+                                  {client.clientEmail ?? "Klient"}
                                 </p>
                                 <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
                                   ID: {client.clientId}
                                 </p>
                               </div>
                               <span className="inline-flex items-center rounded-full bg-black/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-black/80 dark:bg-white/10 dark:text-white/80">
-                                {clientProjects.length} {clientProjects.length === 1 ? "project" : "projects"}
+                                {clientProjects.length} {formatProjectCountLabel(clientProjects.length)}
                               </span>
                             </div>
 
@@ -1278,7 +1293,7 @@ export default function DashboardPage() {
                                         </span>
                                       </div>
                                       <p className="mt-2 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
-                                        Submitted {formatDateTime(submitted)}
+                                        Wysłano {formatDateTime(submitted)}
                                       </p>
                                     </li>
                                   );
@@ -1286,7 +1301,7 @@ export default function DashboardPage() {
                               </ul>
                             ) : (
                               <p className="mt-3 text-sm/6 text-black/60 dark:text-white/60">
-                                This client hasn&apos;t submitted any project briefs yet.
+                                Ten klient nie przesłał jeszcze żadnych briefów projektowych.
                               </p>
                             )}
                           </li>
@@ -1295,7 +1310,7 @@ export default function DashboardPage() {
                     </ul>
                   ) : (
                     <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                      When clients accept your invitations they will appear here.
+                      Gdy klienci zaakceptują Twoje zaproszenia, zobaczysz ich na tej liście.
                     </p>
                   )}
                 </article>
@@ -1398,28 +1413,28 @@ export default function DashboardPage() {
       {isClientView ? (
         <section className="space-y-6">
           <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-            <h2 className="text-lg font-semibold">Your carpenter</h2>
+            <h2 className="text-lg font-semibold">Twój stolarz</h2>
             {assignedCarpenter ? (
               <div className="mt-3 space-y-2 text-sm/6 text-black/70 dark:text-white/70">
                 <p className="text-base font-semibold text-black dark:text-white">
-                  {assignedCarpenter.carpenterEmail ?? "Assigned carpenter"}
+                  {assignedCarpenter.carpenterEmail ?? "Przydzielony stolarz"}
                 </p>
                 <p>
-                  You&apos;re connected to this carpenter for all future project briefs.
+                  Ten stolarz będzie obsługiwał wszystkie Twoje przyszłe briefy projektowe.
                 </p>
               </div>
             ) : (
               <p className="mt-3 text-sm/6 text-black/60 dark:text-white/60">
-                You&apos;re not linked to a carpenter yet. Choose one below when you submit your first project brief.
+                Nie masz jeszcze przypisanego stolarza. Wybierz go poniżej, gdy będziesz wysyłać swój pierwszy brief.
               </p>
             )}
           </article>
 
           {!assignedCarpenter ? (
             <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-              <h2 className="text-lg font-semibold">Available carpenters</h2>
+              <h2 className="text-lg font-semibold">Dostępni stolarze</h2>
               <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                Only carpenters with an active subscription appear in this list.
+                Na liście znajdują się tylko stolarze z aktywną subskrypcją.
               </p>
               {availableCarpenters.length > 0 ? (
                 <ul className="mt-4 space-y-3">
@@ -1429,17 +1444,17 @@ export default function DashboardPage() {
                       className="rounded-xl border border-black/10 bg-black/5 px-4 py-3 dark:border-white/10 dark:bg-white/5"
                     >
                       <p className="text-sm font-semibold text-black dark:text-white">
-                        {carpenter.carpenterEmail ?? "Carpenter"}
+                        {carpenter.carpenterEmail ?? "Stolarz"}
                       </p>
                       <p className="text-xs uppercase tracking-wide text-black/60 dark:text-white/60">
-                        Subscription valid until {formatDateTime(parseDate(carpenter.subscriptionExpiresAt))}
+                        Subskrypcja ważna do {formatDateTime(parseDate(carpenter.subscriptionExpiresAt))}
                       </p>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="mt-4 text-sm/6 text-black/60 dark:text-white/60">
-                  No carpenters are accepting new collaborations right now. Check back later or contact support if you need urgent assistance.
+                  Żaden stolarz nie przyjmuje teraz nowych zgłoszeń. Wróć później albo skontaktuj się z pomocą, jeśli potrzebujesz pilnego wsparcia.
                 </p>
               )}
             </article>
