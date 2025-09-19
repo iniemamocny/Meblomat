@@ -1,22 +1,29 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 
+import { useLanguage } from "@/components/providers/LanguageProvider";
+import { translations } from "@/lib/i18n";
+
 export default function Home() {
+  const { language } = useLanguage();
+  const { hero, sections } = translations[language];
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-24 px-4 py-16">
         <section className="grid items-center gap-12 md:grid-cols-[1.1fr,0.9fr]">
           <div className="space-y-8 text-center md:text-left">
             <span className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-1 text-xs font-semibold uppercase tracking-widest text-black/70 dark:border-white/20 dark:text-white/70">
-              kreator zabudowy stolarskiej
+              {hero.badge}
             </span>
             <div className="space-y-5">
               <h1 className="text-5xl font-semibold tracking-tight text-black sm:text-6xl dark:text-white">
-                Zaprojektuj wymarzoną zabudowę bez wychodzenia z domu
+                {hero.heading}
               </h1>
               <p className="text-lg text-black/60 dark:text-white/60 sm:text-xl">
-                Meblomat łączy wizualny konfigurator z wiedzą stolarzy. W kilka minut zbudujesz projekt, dobierzesz materiały
-                i przygotujesz kompletny zestaw formatki do produkcji.
+                {hero.description}
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-3 md:justify-start">
@@ -24,20 +31,20 @@ export default function Home() {
                 className="inline-flex items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
                 href="/auth/register"
               >
-                Rozpocznij darmową próbę
+                {hero.primaryCta}
               </Link>
               <Link
                 className="inline-flex items-center justify-center rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-black transition hover:border-black/20 hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:border-white/40 dark:hover:bg-white/10"
                 href="/play"
               >
-                Zobacz przykład konfiguracji
+                {hero.secondaryCta}
               </Link>
             </div>
           </div>
           <div className="relative flex items-center justify-center">
             <div className="absolute inset-6 rounded-3xl bg-black/5 blur-3xl dark:bg-white/5" aria-hidden="true" />
             <Image
-              alt="Wizualizacja projektu mebli na wymiar"
+              alt={hero.imageAlt}
               className="relative mx-auto w-full max-w-md rounded-3xl border border-black/10 bg-white/60 p-6 shadow-xl dark:border-white/10 dark:bg-neutral-900/60"
               height={480}
               src="/window.svg"
@@ -51,20 +58,17 @@ export default function Home() {
           id="meble"
         >
           <div className="space-y-4">
-            <h2 className="text-3xl font-semibold text-black dark:text-white">Projektuj meble dokładnie tak, jak potrzebujesz</h2>
-            <p className="text-base text-black/70 dark:text-white/70">
-              Elastyczny konfigurator pozwala budować szafy, zabudowy kuchenne i meble biurowe z zachowaniem dokładnych wymiarów.
-              Wybierasz fronty, korpusy oraz akcesoria z biblioteki dostawców i natychmiast widzisz efekt na ekranie.
-            </p>
+            <h2 className="text-3xl font-semibold text-black dark:text-white">{sections.meble.title}</h2>
+            <p className="text-base text-black/70 dark:text-white/70">{sections.meble.description}</p>
             <ul className="space-y-2 text-sm text-black/70 dark:text-white/70">
-              <li>• Gotowe szablony zabudów narożnych i wnękowych</li>
-              <li>• Szczegółowe sterowanie podziałami, frontami i okuciami</li>
-              <li>• Eksport projektu do PDF z rysunkami technicznymi</li>
+              {sections.meble.bullets.map((bullet) => (
+                <li key={bullet}>• {bullet}</li>
+              ))}
             </ul>
           </div>
           <div className="flex items-center justify-center">
             <Image
-              alt="Panel konfiguracji mebli"
+              alt={sections.meble.imageAlt}
               className="w-full max-w-xs rounded-2xl border border-black/10 bg-white/70 p-5 shadow-md dark:border-white/10 dark:bg-neutral-800/70"
               height={360}
               src="/globe.svg"
@@ -79,7 +83,7 @@ export default function Home() {
         >
           <div className="flex items-center justify-center">
             <Image
-              alt="Skanowanie pomieszczenia"
+              alt={sections.pomieszczenie.imageAlt}
               className="w-full max-w-xs rounded-2xl border border-black/10 bg-white/70 p-5 shadow-md dark:border-white/10 dark:bg-neutral-800/70"
               height={360}
               src="/file.svg"
@@ -87,15 +91,12 @@ export default function Home() {
             />
           </div>
           <div className="space-y-4">
-            <h2 className="text-3xl font-semibold text-black dark:text-white">Dopasuj zabudowę do realnych wymiarów pomieszczenia</h2>
-            <p className="text-base text-black/70 dark:text-white/70">
-              Wprowadź wymiary pomieszczenia lub wykorzystaj pliki z pomiarów laserowych. Kreator podpowie optymalny układ elementów,
-              aby maksymalnie wykorzystać dostępną przestrzeń i zachować ergonomię.
-            </p>
+            <h2 className="text-3xl font-semibold text-black dark:text-white">{sections.pomieszczenie.title}</h2>
+            <p className="text-base text-black/70 dark:text-white/70">{sections.pomieszczenie.description}</p>
             <ul className="space-y-2 text-sm text-black/70 dark:text-white/70">
-              <li>• Szybkie dopasowanie skosów, wnęk i nietypowych wysokości</li>
-              <li>• Weryfikacja kolizji z instalacjami oraz sprzętem AGD</li>
-              <li>• Widok 3D z możliwością udostępnienia klientowi</li>
+              {sections.pomieszczenie.bullets.map((bullet) => (
+                <li key={bullet}>• {bullet}</li>
+              ))}
             </ul>
           </div>
         </section>
@@ -105,20 +106,17 @@ export default function Home() {
           id="wycena"
         >
           <div className="space-y-4">
-            <h2 className="text-3xl font-semibold text-black dark:text-white">Przygotuj ofertę i kosztorys jednym kliknięciem</h2>
-            <p className="text-base text-black/70 dark:text-white/70">
-              System automatycznie wylicza zużycie materiałów, okucia oraz robociznę na podstawie Twoich cenników. Wygenerujesz
-              czytelną ofertę PDF wraz z wizualizacjami i listą elementów do zamówienia.
-            </p>
+            <h2 className="text-3xl font-semibold text-black dark:text-white">{sections.wycena.title}</h2>
+            <p className="text-base text-black/70 dark:text-white/70">{sections.wycena.description}</p>
             <ul className="space-y-2 text-sm text-black/70 dark:text-white/70">
-              <li>• Aktualizacja stawek i rabatów w czasie rzeczywistym</li>
-              <li>• Historia ofert i statusów akceptacji klienta</li>
-              <li>• Integracja z systemami księgowymi i magazynowymi</li>
+              {sections.wycena.bullets.map((bullet) => (
+                <li key={bullet}>• {bullet}</li>
+              ))}
             </ul>
           </div>
           <div className="flex items-center justify-center">
             <Image
-              alt="Panel wyceny"
+              alt={sections.wycena.imageAlt}
               className="w-full max-w-xs rounded-2xl border border-black/10 bg-white/70 p-5 shadow-md dark:border-white/10 dark:bg-neutral-800/70"
               height={360}
               src="/next.svg"
@@ -133,7 +131,7 @@ export default function Home() {
         >
           <div className="flex items-center justify-center">
             <Image
-              alt="Lista formatek do produkcji"
+              alt={sections.formatki.imageAlt}
               className="w-full max-w-xs rounded-2xl border border-black/10 bg-white/70 p-5 shadow-md dark:border-white/10 dark:bg-neutral-800/70"
               height={360}
               src="/vercel.svg"
@@ -141,15 +139,12 @@ export default function Home() {
             />
           </div>
           <div className="space-y-4">
-            <h2 className="text-3xl font-semibold text-black dark:text-white">Eksportuj formatki gotowe dla stolarni</h2>
-            <p className="text-base text-black/70 dark:text-white/70">
-              Generuj listy formatek z rozkrojem płyt, opisem oklein oraz oznaczeniami otworów montażowych. Pliki wyślesz bezpośrednio
-              do swojego dostawcy lub przekażesz do programu optymalizującego cięcie.
-            </p>
+            <h2 className="text-3xl font-semibold text-black dark:text-white">{sections.formatki.title}</h2>
+            <p className="text-base text-black/70 dark:text-white/70">{sections.formatki.description}</p>
             <ul className="space-y-2 text-sm text-black/70 dark:text-white/70">
-              <li>• Eksport w formatach CSV, DXF oraz kompatybilnych z CNC</li>
-              <li>• Automatyczne generowanie etykiet elementów</li>
-              <li>• Harmonogram produkcji zsynchronizowany z kalendarzem</li>
+              {sections.formatki.bullets.map((bullet) => (
+                <li key={bullet}>• {bullet}</li>
+              ))}
             </ul>
           </div>
         </section>
