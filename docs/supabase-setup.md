@@ -15,20 +15,6 @@ Run the full script in the Supabase SQL editor (or apply it through the CLI as d
 - create collaboration tables for carpenter invitations, active client links, and shared projects, and
 - apply row level security policies so carpenters manage their own data, clients can read their assignments, and admins retain full access.
 
-Once the tables exist, the [`public.bootstrap_admin`](../supabase/migrations/0009_add_admin_bootstrap_function.sql) RPC reports the current number of administrator accounts and allows the first verified user to claim the sole admin slot. The Next.js registration form calls this function to expose an "Administrator" radio button while `admin_count` is zero. After email verification, the app invokes `public.bootstrap_admin(promote := true)` to set the caller’s `account_type` to `admin` and immediately clears the temporary metadata so future sign-ups cannot reuse the elevated role.
-
-If you prefer to bootstrap the administrator manually, run the following SQL in the Supabase editor after applying the migration:
-
-```sql
--- Check whether an administrator already exists.
-select public.bootstrap_admin();
-
--- For a verified session, promote the caller if the count is still zero.
-select public.bootstrap_admin(true);
-```
-
-Once the first admin is established, the RPC keeps returning a non-zero `admin_count`, the registration form hides the option, and all subsequent promotions must be performed through privileged service-role access.
-
 ```sql
 -- Extensions and enumerations used by the collaboration tables.
 create extension if not exists "pgcrypto";
@@ -119,22 +105,39 @@ set search_path = public
 as $$
 declare
   jwt_role text := current_setting('request.jwt.claim.role', true);
+  is_privileged boolean := jwt_role in ('service_role', 'supabase_admin');
+  requested_account_type public.account_type := coalesce(new.account_type, old.account_type);
+  is_owner boolean := auth.uid() = new.id;
+  allow_admin_bootstrap boolean := coalesce(current_setting('meblomat.allow_admin_bootstrap', true), 'false') = 'true';
+  allow_owner_admin_bootstrap boolean := allow_admin_bootstrap
+    and is_owner
+    and requested_account_type = 'admin'::public.account_type;
+  allow_owner_carpenter_upgrade boolean := is_owner
+    and old.account_type = 'client'::public.account_type
+    and requested_account_type = 'carpenter'::public.account_type;
 begin
   new.updated_at := timezone('utc', now());
 
-  -- Only service_role / supabase_admin (or direct SQL sessions without a JWT)
-  -- may alter the subscription expiry timestamp or account type.
-  if jwt_role is not null and jwt_role not in ('service_role', 'supabase_admin') then
+  if not is_privileged then
     new.subscription_expires_at := old.subscription_expires_at;
-    new.account_type := old.account_type;
-  else
-    if new.subscription_expires_at is null then
-      new.subscription_expires_at := old.subscription_expires_at;
-    end if;
+  elsif new.subscription_expires_at is null then
+    new.subscription_expires_at := old.subscription_expires_at;
+  end if;
 
-    if new.account_type is null then
+  if new.account_type is null then
+    new.account_type := old.account_type;
+  end if;
+
+  if not is_privileged then
+    if allow_owner_admin_bootstrap then
+      new.account_type := 'admin'::public.account_type;
+    elsif allow_owner_carpenter_upgrade then
+      new.account_type := 'carpenter'::public.account_type;
+    else
       new.account_type := old.account_type;
     end if;
+  elsif new.account_type is null then
+    new.account_type := old.account_type;
   end if;
 
   return new;
@@ -145,6 +148,64 @@ drop trigger if exists profiles_lock_subscription on public.profiles;
 create trigger profiles_lock_subscription
   before update on public.profiles
   for each row execute function public.profiles_lock_subscription();
+
+create or replace function public.bootstrap_admin(promote boolean default false)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  caller_id uuid := auth.uid();
+  admin_count bigint := 0;
+  promoted boolean := false;
+  allow_promotion boolean := promote;
+  bootstrap_lock_key bigint := hashtext('meblomat:bootstrap_admin')::bigint;
+begin
+  if allow_promotion then
+    if caller_id is null then
+      raise exception 'You must be authenticated to claim the administrator role.'
+        using errcode = '42501';
+    end if;
+
+    -- Serialise concurrent attempts so only one caller can bootstrap the
+    -- administrator role at a time.
+    perform pg_advisory_xact_lock(bootstrap_lock_key);
+  end if;
+
+  select count(*)
+  into admin_count
+  from public.profiles
+  where account_type = 'admin'::public.account_type;
+
+  if allow_promotion and admin_count = 0 then
+    perform set_config('meblomat.allow_admin_bootstrap', 'true', true);
+
+    update public.profiles
+    set account_type = 'admin'::public.account_type
+    where id = caller_id;
+
+    if not found then
+      raise exception 'A profile is required before claiming the administrator role.'
+        using errcode = 'P0002';
+    end if;
+
+    promoted := true;
+
+    select count(*)
+    into admin_count
+    from public.profiles
+    where account_type = 'admin'::public.account_type;
+  end if;
+
+  return json_build_object(
+    'admin_count', admin_count,
+    'promoted', promoted
+  );
+end;
+$$;
+
+grant execute on function public.bootstrap_admin(boolean) to anon, authenticated, service_role;
 
 -- Automatically create a profile row whenever Supabase adds an auth user.
 create or replace function public.handle_new_user_profile()
@@ -534,6 +595,37 @@ create policy "Carpenters delete shared projects"
     )
   );
 ```
+
+Once the tables exist, the [`public.bootstrap_admin`](../supabase/migrations/0009_add_admin_bootstrap_function.sql) RPC reports the current number of administrator accounts and allows the first verified user to claim the sole admin slot. The Next.js registration form calls this function to expose an "Administrator" radio button while `admin_count` is zero. After email verification, the app invokes `public.bootstrap_admin(promote := true)` to set the caller’s `account_type` to `admin` and immediately clears the temporary metadata so future sign-ups cannot reuse the elevated role.
+
+If you prefer to bootstrap the administrator manually, run the following SQL in the Supabase editor after applying the migration:
+
+```sql
+-- Check whether an administrator already exists.
+select public.bootstrap_admin();
+```
+
+To promote a verified account, you must impersonate that user so `auth.uid()` can detect the caller. Grab the `id` from the **Auth → Users** table (or `auth.users` view) and run the next block in the same editor session:
+
+```sql
+-- Replace the UUID with the verified user's id before running the block.
+set request.jwt.claim.role = 'authenticated';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
+
+-- Verify the impersonation succeeded; this should echo the UUID above.
+select auth.uid();
+
+-- Promote the impersonated caller if no administrators exist yet.
+select public.bootstrap_admin(true);
+
+-- Clean up the temporary claims so future queries run as an anonymous session.
+reset request.jwt.claim.role;
+reset request.jwt.claim.sub;
+```
+
+If you see `ERROR: 42501: You must be authenticated to claim the administrator role`, double-check that you replaced the UUID and executed the entire block together so the claims were active when `public.bootstrap_admin(true)` ran.
+
+Once the first admin is established, the RPC keeps returning a non-zero `admin_count`, the registration form hides the option, and all subsequent promotions must be performed through privileged service-role access.
 
 ## 2. Apply the script with the Supabase CLI (optional)
 
