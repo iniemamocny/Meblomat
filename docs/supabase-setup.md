@@ -637,6 +637,13 @@ set email_confirmed_at = now()
 where id = '00000000-0000-0000-0000-000000000000';
 ```
 
+If you are already signed in as the verified user inside the SQL editor, you can run the RPC directly without the impersonation block:
+
+```sql
+-- For a verified session, promote the caller if the count is still zero.
+select public.bootstrap_admin(true);
+```
+
 If you see `ERROR: 42501: You must be authenticated to claim the administrator role`, double-check that you replaced the UUID and executed the entire block together so the claims were active when `public.bootstrap_admin(true)` ran.
 
 Once the first admin is established, the RPC keeps returning a non-zero `admin_count`, the registration form hides the option, and all subsequent promotions must be performed through privileged service-role access.
