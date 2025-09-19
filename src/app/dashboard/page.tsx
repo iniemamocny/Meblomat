@@ -13,6 +13,7 @@ import {
   type ActiveCarpenter,
   type AssignedCarpenter,
   type CarpenterClient,
+  getCarpenterReferralLink,
   getAssignedCarpenter,
 } from "@/lib/carpenters";
 import { generateInvitation } from "@/lib/invitations";
@@ -95,6 +96,16 @@ export default function DashboardPage() {
   const [invitationError, setInvitationError] = useState<string | null>(null);
   const [isInvitationSubmitting, setIsInvitationSubmitting] = useState(false);
   const [inviteBaseUrl, setInviteBaseUrl] = useState<string | null>(null);
+  const [carpenterReferralToken, setCarpenterReferralToken] = useState<
+    string | null
+  >(null);
+  const [referralLinkError, setReferralLinkError] = useState<string | null>(
+    null,
+  );
+  const [hasCopiedReferralLink, setHasCopiedReferralLink] = useState(false);
+  const [referralCopyError, setReferralCopyError] = useState<string | null>(
+    null,
+  );
   const [projectCarpenterId, setProjectCarpenterId] = useState<string | null>(
     null,
   );
@@ -119,6 +130,11 @@ export default function DashboardPage() {
       setInviteBaseUrl(null);
     }
   }, []);
+
+  useEffect(() => {
+    setHasCopiedReferralLink(false);
+    setReferralCopyError(null);
+  }, [carpenterReferralToken, inviteBaseUrl]);
 
   useEffect(() => {
     if (!supabase) {
@@ -224,6 +240,8 @@ export default function DashboardPage() {
       }
 
       setDashboardError(null);
+      setReferralLinkError(null);
+      setReferralCopyError(null);
 
       try {
         const [invitationResponse, clientsList, projectList] = await Promise.all([
@@ -267,6 +285,32 @@ export default function DashboardPage() {
           error instanceof Error
             ? error.message
             : "We couldn't load your collaboration data.",
+        );
+
+        return;
+      }
+
+      if (signal?.aborted) {
+        return;
+      }
+
+      try {
+        const referralToken = await getCarpenterReferralLink(supabase);
+
+        if (signal?.aborted) {
+          return;
+        }
+
+        setCarpenterReferralToken(referralToken);
+      } catch (error) {
+        if (signal?.aborted) {
+          return;
+        }
+
+        setReferralLinkError(
+          error instanceof Error
+            ? error.message
+            : "We couldn't load your referral link.",
         );
       }
     },
@@ -346,13 +390,39 @@ export default function DashboardPage() {
     if (accountType === "carpenter") {
       refreshCarpenterData(abortController.signal);
     } else if (accountType === "client") {
+      setCarpenterReferralToken(null);
+      setReferralLinkError(null);
+      setHasCopiedReferralLink(false);
+      setReferralCopyError(null);
       refreshClientData(abortController.signal);
+    } else {
+      setCarpenterReferralToken(null);
+      setReferralLinkError(null);
+      setHasCopiedReferralLink(false);
+      setReferralCopyError(null);
     }
 
     return () => {
       abortController.abort();
     };
   }, [accountType, refreshCarpenterData, refreshClientData, supabase, userId]);
+
+  const referralShareLink = useMemo(() => {
+    if (!carpenterReferralToken) {
+      return null;
+    }
+
+    const baseUrl =
+      inviteBaseUrl ??
+      (typeof window !== "undefined" ? window.location.origin : "");
+
+    if (!baseUrl) {
+      return `/invite/${carpenterReferralToken}`;
+    }
+
+    return `${baseUrl}/invite/${carpenterReferralToken}`;
+  }, [carpenterReferralToken, inviteBaseUrl]);
+  const isReferralLinkReady = Boolean(referralShareLink) && !referralLinkError;
 
   const handleInvitationSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -410,6 +480,36 @@ export default function DashboardPage() {
       refreshCarpenterData,
     ],
   );
+
+  const handleReferralCopy = useCallback(async () => {
+    if (!referralShareLink) {
+      return;
+    }
+
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.clipboard ||
+      typeof navigator.clipboard.writeText !== "function"
+    ) {
+      setHasCopiedReferralLink(false);
+      setReferralCopyError(
+        "Copy isn't available in this environment. Use the link below instead.",
+      );
+
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(referralShareLink);
+      setHasCopiedReferralLink(true);
+      setReferralCopyError(null);
+    } catch {
+      setHasCopiedReferralLink(false);
+      setReferralCopyError(
+        "We couldn't copy the link automatically. Try copying it manually.",
+      );
+    }
+  }, [referralShareLink]);
 
   const handleProjectSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -534,6 +634,8 @@ export default function DashboardPage() {
     return map;
   }, [assignedCarpenter, availableCarpenters]);
   const canSubmitProject = Boolean(projectCarpenterId);
+  const rawReferralDescriptionId = useId();
+  const referralLinkDescriptionId = `carpenter-referral-${rawReferralDescriptionId.replace(/:/g, "")}`;
   const rawProjectsId = useId();
   const projectsContentId = `client-projects-${rawProjectsId.replace(/:/g, "")}`;
 
@@ -924,18 +1026,51 @@ export default function DashboardPage() {
             <div className="border-t border-black/10 px-6 py-6 dark:border-white/10">
               <div className="space-y-6">
                 <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-                  <h2 className="text-lg font-semibold">Invite a client</h2>
+                  <h2 className="text-lg font-semibold">Invite clients</h2>
                   <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                    Generate a secure link that connects new clients to your workspace.
+                    Share your reusable referral link or generate a one-off invitation for a specific email address.
                   </p>
-                  <form className="mt-4 space-y-4" onSubmit={handleInvitationSubmit} noValidate>
-                    <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium text-black dark:text-white"
-                        htmlFor="invitation-email"
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-400/10 dark:text-emerald-100">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm font-medium">Reusable referral link</p>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-300/40 dark:bg-transparent dark:text-emerald-100 dark:hover:bg-emerald-400/20 dark:focus:ring-emerald-200/40"
+                          onClick={handleReferralCopy}
+                          disabled={!isReferralLinkReady}
+                          aria-describedby={referralLinkDescriptionId}
+                        >
+                          {hasCopiedReferralLink ? "Copied" : "Copy link"}
+                        </button>
+                      </div>
+                      <p
+                        className={`mt-2 break-all font-mono text-sm ${referralLinkError ? "text-red-700 dark:text-red-300" : ""}`}
+                        id={referralLinkDescriptionId}
                       >
-                        Client email
-                      </label>
+                        {referralLinkError
+                          ? referralLinkError
+                          : referralShareLink ?? "Generating your referral link…"}
+                      </p>
+                      {hasCopiedReferralLink ? (
+                        <p className="mt-2 text-sm font-medium text-emerald-900 dark:text-emerald-100" aria-live="polite">
+                          Link copied to clipboard.
+                        </p>
+                      ) : null}
+                      {referralCopyError ? (
+                        <p className="mt-2 text-sm text-red-700 dark:text-red-300" aria-live="polite">
+                          {referralCopyError}
+                        </p>
+                      ) : null}
+                    </div>
+                    <form className="space-y-4" onSubmit={handleInvitationSubmit} noValidate>
+                      <div className="space-y-2">
+                        <label
+                          className="text-sm font-medium text-black dark:text-white"
+                          htmlFor="invitation-email"
+                        >
+                          Client email
+                        </label>
                       <input
                         id="invitation-email"
                         type="email"
@@ -966,6 +1101,7 @@ export default function DashboardPage() {
                       {isInvitationSubmitting ? "Generating link…" : "Generate invitation"}
                     </button>
                   </form>
+                </div>
                 </article>
 
                 <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
