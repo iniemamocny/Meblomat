@@ -603,51 +603,15 @@ Once the tables exist, the [`public.bootstrap_admin`](../supabase/migrations/000
 
 ### Manually bootstrap the first administrator
 
-If you prefer to bootstrap the administrator manually, walk through these steps in the Supabase SQL editor after the migration finishes running:
+If you prefer to bootstrap the administrator manually, run the following SQL in the Supabase editor after applying the migration:
 
-1. **Check whether an administrator already exists.**
+```sql
+-- Check whether an administrator already exists.
+select public.bootstrap_admin();
 
-   ```sql
-   select public.bootstrap_admin();
-   ```
-
-2. **Ensure the target user is verified.** If the account has not been confirmed yet, update `auth.users.email_confirmed_at` so the impersonated profile matches what the production onboarding flow expects:
-
-   ```sql
-   -- Replace the UUID with the same verified user's id before running the update.
-   update auth.users
-   set email_confirmed_at = now()
-   where id = '00000000-0000-0000-0000-000000000000';
-   ```
-
-3. **Impersonate the verified user and promote them.** Supabase resolves `auth.uid()` using JWT claims, so temporarily impersonate the account before calling the RPC:
-
-   ```sql
-   -- Replace the UUID with the verified user's id before running the block.
-   set request.jwt.claim.role = 'authenticated';
-   set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
-
-   -- Verify the impersonation succeeded; this should echo the UUID above.
-   select auth.uid();
-
-   -- Promote the impersonated caller if no administrators exist yet.
-   select public.bootstrap_admin(true);
-
-   -- Clean up the temporary claims so future queries run as an anonymous session.
-   reset request.jwt.claim.role;
-   reset request.jwt.claim.sub;
-   ```
-
-   > ⚠️ Highlight the entire block above (from the first `set` through the `reset` statements) before clicking **Run** in the SQL editor. Supabase may recycle the session between individual executions, which clears the temporary claims and leaves `auth.uid()` empty.
-
-   If you are already signed in as the verified user inside the SQL editor, you can call the RPC directly without impersonating them first:
-
-   ```sql
-   -- For a verified session, promote the caller if the count is still zero.
-   select public.bootstrap_admin(true);
-   ```
-
-If you see `ERROR: 42501: You must be authenticated to claim the administrator role`, double-check that you replaced the UUID, ran the impersonation block in a single execution, and confirmed the account’s email before calling `public.bootstrap_admin(true)`.
+-- For a verified session, promote the caller if the count is still zero.
+select public.bootstrap_admin(true);
+```
 
 Once the first admin is established, the RPC keeps returning a non-zero `admin_count`, the registration form hides the option, and all subsequent promotions must be performed through privileged service-role access.
 
