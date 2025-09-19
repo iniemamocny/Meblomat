@@ -5,13 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
-import { AvatarPicker } from "@/components/dashboard/AvatarPicker";
 import { UserAvatar } from "@/components/layout/UserAvatar";
-import {
-  DEFAULT_AVATAR_ID,
-  getAvatarPresetIcon,
-  type AvatarType,
-} from "@/lib/avatar";
+import { getAccountTypeIcon, type AccountType } from "@/lib/avatar";
 import {
   listActiveCarpenters,
   listCarpenterClients,
@@ -34,16 +29,7 @@ type AccountType = "carpenter" | "client" | "admin";
 
 type ProfileRow = {
   subscription_expires_at: string | null;
-  avatar_type: AvatarType | null;
-  avatar_path: string | null;
   account_type: AccountType | null;
-};
-
-type AvatarChangePayload = {
-  type: AvatarType;
-  path: string;
-  imageUrl: string | null;
-  error?: string | null;
 };
 
 type InvitationRow = {
@@ -97,10 +83,6 @@ export default function DashboardPage() {
   const [isProfileMissing, setIsProfileMissing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [avatarType, setAvatarType] = useState<AvatarType>("icon");
-  const [avatarPath, setAvatarPath] = useState<string>(DEFAULT_AVATAR_ID);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarLoadError, setAvatarLoadError] = useState<string | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<InvitationRow[]>([]);
   const [carpenterClients, setCarpenterClients] = useState<CarpenterClient[]>([]);
@@ -140,29 +122,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleAvatarChange = useCallback(
-    (change: AvatarChangePayload) => {
-      const normalizedPath = change.path || DEFAULT_AVATAR_ID;
-      const nextType: AvatarType = change.type === "upload" ? "upload" : "icon";
-
-      setAvatarType(nextType);
-      setAvatarPath(normalizedPath);
-
-      if (nextType === "upload") {
-        setAvatarUrl(change.imageUrl ?? null);
-        setAvatarLoadError(
-          change.error
-            ? "Nie udało się wczytać podglądu avatara. Spróbuj odświeżyć stronę lub wybrać plik ponownie."
-            : null,
-        );
-      } else {
-        setAvatarUrl(null);
-        setAvatarLoadError(null);
-      }
-    },
-    [],
-  );
-
   useEffect(() => {
     if (!supabase) {
       return;
@@ -195,20 +154,13 @@ export default function DashboardPage() {
         error: profileFetchError,
       } = await supabase
         .from("profiles")
-        .select(
-          "subscription_expires_at, avatar_type, avatar_path, account_type",
-        )
+        .select("subscription_expires_at, account_type")
         .eq("id", user.id)
         .maybeSingle<ProfileRow>();
 
       if (!active) {
         return;
       }
-
-      let nextAvatarType: AvatarType = "icon";
-      let nextAvatarPath = DEFAULT_AVATAR_ID;
-      let nextAvatarUrl: string | null = null;
-      let hasPreviewError = false;
 
       const userCreatedAt = user.created_at ? new Date(user.created_at) : null;
       const fallbackTrialExpiry =
@@ -226,26 +178,6 @@ export default function DashboardPage() {
       const hasProfile = Boolean(profile);
 
       if (!profileFetchError && hasProfile && profile) {
-        nextAvatarType = profile.avatar_type === "upload" ? "upload" : "icon";
-        nextAvatarPath = profile.avatar_path ?? DEFAULT_AVATAR_ID;
-
-        if (nextAvatarType === "upload" && profile.avatar_path) {
-          const { data: signedUrlData, error: signedUrlError } =
-            await supabase.storage
-              .from("avatars")
-              .createSignedUrl(profile.avatar_path, 60 * 60 * 24 * 7);
-
-          if (!active) {
-            return;
-          }
-
-          if (signedUrlError) {
-            hasPreviewError = true;
-          } else {
-            nextAvatarUrl = signedUrlData?.signedUrl ?? null;
-          }
-        }
-
         nextSubscriptionExpiresAt =
           profile.subscription_expires_at ?? fallbackTrialExpiryIso;
         nextAccountType = profile.account_type ?? DEFAULT_ACCOUNT_TYPE;
@@ -270,13 +202,6 @@ export default function DashboardPage() {
       setSubscriptionExpiresAt(nextSubscriptionExpiresAt);
       setAccountType(nextAccountType);
 
-      handleAvatarChange({
-        type: nextAvatarType,
-        path: nextAvatarPath,
-        imageUrl: nextAvatarUrl,
-        error: hasPreviewError ? "preview-error" : null,
-      });
-
       setIsLoading(false);
     };
 
@@ -285,19 +210,14 @@ export default function DashboardPage() {
         return;
       }
 
-      handleAvatarChange({
-        type: "icon",
-        path: DEFAULT_AVATAR_ID,
-        imageUrl: null,
-        error: null,
-      });
+      setAccountType(DEFAULT_ACCOUNT_TYPE);
       router.replace("/auth/login");
     });
 
     return () => {
       active = false;
     };
-  }, [handleAvatarChange, router, supabase]);
+  }, [router, supabase]);
 
   const refreshCarpenterData = useCallback(
     async (signal?: AbortSignal) => {
@@ -678,15 +598,21 @@ export default function DashboardPage() {
     }
   }
 
-  const avatarPresetIcon = getAvatarPresetIcon(avatarPath);
-  const avatarInitials = userEmail?.[0]?.toUpperCase();
-  const showPreviewLoadingMessage =
-    avatarType === "upload" && !avatarUrl && !avatarLoadError;
+  const accountIcon = getAccountTypeIcon(accountType);
   const avatarFallbackIcon = (
     <span aria-hidden="true" className="text-2xl">
-      {avatarPresetIcon}
+      {accountIcon}
     </span>
   );
+  const avatarInitials = userEmail?.[0]?.toUpperCase();
+  const normalizedAccountType: AccountType =
+    accountType ?? DEFAULT_ACCOUNT_TYPE;
+  const accountRoleLabel =
+    normalizedAccountType === "admin"
+      ? "administrator"
+      : normalizedAccountType === "carpenter"
+        ? "carpenter"
+        : "client";
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-16">
@@ -759,39 +685,22 @@ export default function DashboardPage() {
               <article className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
                 <h2 className="text-lg font-semibold">Avatar</h2>
                 <p className="mt-1 text-sm/6 text-black/60 dark:text-white/60">
-                  Wybierz ikonę, która będzie widoczna w nagłówku i na dashboardzie.
+                  Icons are assigned automatically based on your role in the workspace.
                 </p>
                 <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center">
                   <UserAvatar
-                    imageUrl={avatarType === "upload" ? avatarUrl : null}
                     fallbackIcon={avatarFallbackIcon}
                     initials={avatarInitials}
                     className="size-16 text-2xl"
                   />
                   <div className="text-sm/6 text-black/60 dark:text-white/60">
-                    {avatarLoadError ? (
-                      <p className="text-red-600 dark:text-red-400">{avatarLoadError}</p>
-                    ) : showPreviewLoadingMessage ? (
-                      <p>Trwa generowanie podglądu przesłanego obrazu…</p>
-                    ) : (
-                      <p>Tak będzie wyglądał Twój profil w aplikacji.</p>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-6">
-                  {supabase && userId ? (
-                    <AvatarPicker
-                      supabase={supabase}
-                      userId={userId}
-                      currentAvatarType={avatarType}
-                      currentAvatarPath={avatarPath}
-                      onAvatarChange={handleAvatarChange}
-                    />
-                  ) : (
-                    <p className="text-sm/6 text-black/60 dark:text-white/60">
-                      Zaloguj się, aby zmienić avatar.
+                    <p>
+                      You&apos;re currently using the {accountRoleLabel} icon. We&apos;ll update it automatically whenever your access level changes.
                     </p>
-                  )}
+                    <p className="mt-1">
+                      No manual action is required—just keep your account details up to date.
+                    </p>
+                  </div>
                 </div>
               </article>
             </section>
