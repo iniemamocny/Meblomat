@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { AuthError } from "@supabase/auth-js";
 import type { Session } from "@supabase/supabase-js";
 
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
@@ -52,6 +53,30 @@ export function AuthForm({
   const [emailRedirectUrl, setEmailRedirectUrl] = useState<string | undefined>();
 
   useEffect(() => {
+    if (!supabase || view !== "sign_in") {
+      return;
+    }
+
+    const auth = supabase.auth;
+    const originalSignUp = auth.signUp;
+
+    const blockedSignUp: typeof auth.signUp = async (..._args) => {
+      router.replace("/auth/register");
+
+      return {
+        data: { session: null, user: null },
+        error: new AuthError("Sign up is disabled on the login page.", 400),
+      };
+    };
+
+    auth.signUp = blockedSignUp;
+
+    return () => {
+      auth.signUp = originalSignUp;
+    };
+  }, [router, supabase, view]);
+
+  useEffect(() => {
     if (disableEmailRedirect) {
       setEmailRedirectUrl(undefined);
       return;
@@ -76,6 +101,11 @@ export function AuthForm({
 
     const { data } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (view === "sign_in" && event === "SIGNED_UP") {
+          router.replace("/auth/register");
+          return;
+        }
+
         if (event === "SIGNED_IN" || event === "USER_UPDATED") {
           let allowRedirect = true;
 
@@ -113,7 +143,7 @@ export function AuthForm({
     return () => {
       data.subscription.unsubscribe();
     };
-  }, [onSignedIn, redirectPath, router, supabase]);
+  }, [onSignedIn, redirectPath, router, supabase, view]);
 
   if (!supabase) {
     return null;
