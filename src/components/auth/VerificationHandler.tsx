@@ -48,6 +48,26 @@ const isTokenHashVerificationType = (
 
 type SupabaseBrowserClient = ReturnType<typeof createSupabaseBrowserClient>;
 
+const getPendingAccountTypeFromUser = (user: User | null): string | null => {
+  if (!user) {
+    return null;
+  }
+
+  const value = user.user_metadata?.pending_account_type;
+
+  return typeof value === "string" && value.length > 0 ? value : null;
+};
+
+const getPendingInvitationTokenFromUser = (user: User | null): string | null => {
+  if (!user) {
+    return null;
+  }
+
+  const value = user.user_metadata?.pending_invitation_token;
+
+  return typeof value === "string" && value.length > 0 ? value : null;
+};
+
 export async function verifyEmailChangeRequest(
   supabase: SupabaseBrowserClient,
   token: string,
@@ -179,7 +199,11 @@ export function VerificationHandler({
         return;
       }
 
-      if (!authenticatedUser) {
+      let pendingAccountType = getPendingAccountTypeFromUser(authenticatedUser);
+      let pendingInvitationToken =
+        getPendingInvitationTokenFromUser(authenticatedUser);
+
+      if (!authenticatedUser || !pendingAccountType) {
         const { data: userData, error: getUserError } = await supabase.auth.getUser();
 
         if (!active) {
@@ -192,7 +216,12 @@ export function VerificationHandler({
           return;
         }
 
-        authenticatedUser = userData?.user ?? null;
+        if (userData?.user) {
+          authenticatedUser = userData.user;
+        }
+
+        pendingAccountType = getPendingAccountTypeFromUser(authenticatedUser);
+        pendingInvitationToken = getPendingInvitationTokenFromUser(authenticatedUser);
       }
 
       if (!authenticatedUser) {
@@ -202,10 +231,6 @@ export function VerificationHandler({
         );
         return;
       }
-
-      const pendingAccountType = authenticatedUser.user_metadata?.pending_account_type;
-      const pendingInvitationToken =
-        authenticatedUser.user_metadata?.pending_invitation_token;
 
       if (pendingAccountType) {
         if (pendingAccountType === "admin") {
