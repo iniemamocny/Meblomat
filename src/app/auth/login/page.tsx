@@ -63,7 +63,7 @@ export default function LoginPage() {
         <h1 className="text-3xl font-semibold tracking-tight">{loginTexts.title}</h1>
         <p className="text-sm/6 text-black/60 dark:text-white/60">{loginTexts.description}</p>
       </div>
-      <AuthForm view="sign_in" className="space-y-4" />
+      <AuthForm view="sign_in" showLinks={false} className="space-y-4" />
       <p className="text-sm/6 text-black/60 dark:text-white/60">
         {loginTexts.noAccountPrompt}{" "}
         <Link className="font-semibold text-black dark:text-white" href="/auth/register">
