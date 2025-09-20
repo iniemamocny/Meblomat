@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
+import type { Session } from "@supabase/supabase-js";
 
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
@@ -16,6 +17,13 @@ type AuthView =
   | "update_password"
   | "verify_otp";
 
+type SupabaseBrowserClient = ReturnType<typeof createSupabaseBrowserClient>;
+
+type OnSignedInCallback = (args: {
+  session: Session;
+  supabase: SupabaseBrowserClient;
+}) => Promise<boolean | void> | boolean | void;
+
 type Props = {
   view: AuthView;
   redirectPath?: string;
@@ -23,6 +31,7 @@ type Props = {
   showLinks?: boolean;
   className?: string;
   disableEmailRedirect?: boolean;
+  onSignedIn?: OnSignedInCallback;
 };
 
 export function AuthForm({
@@ -32,6 +41,7 @@ export function AuthForm({
   showLinks = true,
   className,
   disableEmailRedirect = false,
+  onSignedIn,
 }: Props) {
   const router = useRouter();
   const isSupabaseConfigured = isSupabaseConfiguredOnClient();
@@ -64,23 +74,46 @@ export function AuthForm({
       return;
     }
 
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-        if (redirectPath) {
-          router.replace(redirectPath);
-        }
-        router.refresh();
-      }
+    const { data } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+          let allowRedirect = true;
 
-      if (event === "SIGNED_OUT") {
-        router.refresh();
-      }
-    });
+          if (event === "SIGNED_IN" && session && onSignedIn) {
+            try {
+              const result = await onSignedIn({
+                session,
+                supabase,
+              });
+
+              if (result === false) {
+                allowRedirect = false;
+              }
+            } catch (error) {
+              console.error("Failed to handle signed-in callback", error);
+            }
+          }
+
+          if (allowRedirect) {
+            if (redirectPath) {
+              router.replace(redirectPath);
+            }
+            router.refresh();
+          }
+
+          return;
+        }
+
+        if (event === "SIGNED_OUT") {
+          router.refresh();
+        }
+      },
+    );
 
     return () => {
       data.subscription.unsubscribe();
     };
-  }, [redirectPath, router, supabase]);
+  }, [onSignedIn, redirectPath, router, supabase]);
 
   if (!supabase) {
     return null;

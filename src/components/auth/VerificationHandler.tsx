@@ -68,6 +68,158 @@ const getPendingInvitationTokenFromUser = (user: User | null): string | null => 
   return typeof value === "string" && value.length > 0 ? value : null;
 };
 
+type AccountUpgradeResult =
+  | { status: "success"; user: User }
+  | { status: "error"; message: string };
+
+export async function completePendingAccountUpgrades(
+  supabase: SupabaseBrowserClient,
+  initialUser: User | null,
+): Promise<AccountUpgradeResult> {
+  let authenticatedUser: User | null = initialUser;
+  let pendingAccountType = getPendingAccountTypeFromUser(authenticatedUser);
+  let pendingInvitationToken =
+    getPendingInvitationTokenFromUser(authenticatedUser);
+
+  if (!authenticatedUser || !pendingAccountType) {
+    const { data: userData, error: getUserError } = await supabase.auth.getUser();
+
+    if (getUserError) {
+      return { status: "error", message: getUserError.message };
+    }
+
+    if (userData?.user) {
+      authenticatedUser = userData.user;
+    }
+
+    pendingAccountType = getPendingAccountTypeFromUser(authenticatedUser);
+    pendingInvitationToken = getPendingInvitationTokenFromUser(authenticatedUser);
+  }
+
+  if (!authenticatedUser) {
+    return {
+      status: "error",
+      message:
+        "We couldn't load your account after verifying. Please try signing in again.",
+    };
+  }
+
+  if (pendingAccountType) {
+    if (pendingAccountType === "admin") {
+      const { data: bootstrapResult, error: bootstrapError } = await supabase.rpc(
+        "bootstrap_admin",
+        { promote: true },
+      );
+
+      if (bootstrapError) {
+        return { status: "error", message: bootstrapError.message };
+      }
+
+      const promoted =
+        typeof bootstrapResult === "object" &&
+        bootstrapResult !== null &&
+        "promoted" in bootstrapResult &&
+        Boolean((bootstrapResult as { promoted?: boolean }).promoted);
+
+      const adminCount =
+        typeof bootstrapResult === "object" &&
+        bootstrapResult !== null &&
+        "admin_count" in bootstrapResult
+          ? Number((bootstrapResult as { admin_count?: number }).admin_count)
+          : null;
+
+      if (!promoted) {
+        return {
+          status: "error",
+          message:
+            adminCount !== null && adminCount > 0
+              ? "An administrator already exists, so this link can no longer grant admin access."
+              : "We couldn't promote your account to administrator. Please try again.",
+        };
+      }
+    } else if (pendingAccountType === "carpenter") {
+      const { data: promotionResult, error: promotionError } = await supabase.rpc(
+        "promote_to_carpenter",
+      );
+
+      if (promotionError) {
+        return { status: "error", message: promotionError.message };
+      }
+
+      const nextAccountType =
+        typeof promotionResult === "object" &&
+        promotionResult !== null &&
+        "account_type" in promotionResult
+          ? (promotionResult as { account_type?: string | null }).account_type ?? null
+          : null;
+
+      if (nextAccountType !== "carpenter") {
+        return {
+          status: "error",
+          message:
+            "We couldn't upgrade your account to carpenter. Please try again.",
+        };
+      }
+    } else {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("account_type")
+        .eq("id", authenticatedUser.id)
+        .single();
+
+      if (profileError) {
+        return { status: "error", message: profileError.message };
+      }
+
+      if (profile?.account_type !== pendingAccountType) {
+        const { error: updateProfileError } = await supabase
+          .from("profiles")
+          .update({ account_type: pendingAccountType })
+          .eq("id", authenticatedUser.id);
+
+        if (updateProfileError) {
+          return { status: "error", message: updateProfileError.message };
+        }
+      }
+    }
+  }
+
+  if (pendingInvitationToken) {
+    const { error: invitationError } = await supabase.rpc(
+      "accept_carpenter_invitation",
+      { invitation_token: pendingInvitationToken },
+    );
+
+    if (invitationError) {
+      return { status: "error", message: invitationError.message };
+    }
+  }
+
+  if (pendingAccountType || pendingInvitationToken) {
+    const metadataToClear: Record<string, null> = {};
+
+    if (pendingAccountType) {
+      metadataToClear.pending_account_type = null;
+    }
+
+    if (pendingInvitationToken) {
+      metadataToClear.pending_invitation_token = null;
+    }
+
+    if (Object.keys(metadataToClear).length > 0) {
+      const { error: updateUserError } = await supabase.auth.updateUser({
+        data: metadataToClear,
+      });
+
+      if (updateUserError) {
+        console.error("Failed to clear pending metadata", updateUserError);
+      }
+    }
+  }
+
+  return { status: "success", user: authenticatedUser };
+}
+
 export async function verifyEmailChangeRequest(
   supabase: SupabaseBrowserClient,
   token: string,
@@ -199,183 +351,22 @@ export function VerificationHandler({
         return;
       }
 
-      let pendingAccountType = getPendingAccountTypeFromUser(authenticatedUser);
-      let pendingInvitationToken =
-        getPendingInvitationTokenFromUser(authenticatedUser);
+      const upgradeResult = await completePendingAccountUpgrades(
+        supabase,
+        authenticatedUser,
+      );
 
-      if (!authenticatedUser || !pendingAccountType) {
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-
-        if (!active) {
-          return;
-        }
-
-        if (getUserError) {
-          setStatus("error");
-          setErrorMessage(getUserError.message);
-          return;
-        }
-
-        if (userData?.user) {
-          authenticatedUser = userData.user;
-        }
-
-        pendingAccountType = getPendingAccountTypeFromUser(authenticatedUser);
-        pendingInvitationToken = getPendingInvitationTokenFromUser(authenticatedUser);
-      }
-
-      if (!authenticatedUser) {
-        setStatus("error");
-        setErrorMessage(
-          "We couldn't load your account after verifying. Please try signing in again.",
-        );
+      if (!active) {
         return;
       }
 
-      if (pendingAccountType) {
-        if (pendingAccountType === "admin") {
-          const { data: bootstrapResult, error: bootstrapError } = await supabase.rpc(
-            "bootstrap_admin",
-            { promote: true },
-          );
-
-          if (!active) {
-            return;
-          }
-
-          if (bootstrapError) {
-            setStatus("error");
-            setErrorMessage(bootstrapError.message);
-            return;
-          }
-
-          const promoted =
-            typeof bootstrapResult === "object" &&
-            bootstrapResult !== null &&
-            "promoted" in bootstrapResult &&
-            Boolean((bootstrapResult as { promoted?: boolean }).promoted);
-
-          const adminCount =
-            typeof bootstrapResult === "object" &&
-            bootstrapResult !== null &&
-            "admin_count" in bootstrapResult
-              ? Number((bootstrapResult as { admin_count?: number }).admin_count)
-              : null;
-
-          if (!promoted) {
-            setStatus("error");
-            setErrorMessage(
-              adminCount !== null && adminCount > 0
-                ? "An administrator already exists, so this link can no longer grant admin access."
-                : "We couldn't promote your account to administrator. Please try again.",
-            );
-            return;
-          }
-        } else if (pendingAccountType === "carpenter") {
-          const { data: promotionResult, error: promotionError } = await supabase.rpc(
-            "promote_to_carpenter",
-          );
-
-          if (!active) {
-            return;
-          }
-
-          if (promotionError) {
-            setStatus("error");
-            setErrorMessage(promotionError.message);
-            return;
-          }
-
-          const nextAccountType =
-            typeof promotionResult === "object" &&
-            promotionResult !== null &&
-            "account_type" in promotionResult
-              ? (promotionResult as { account_type?: string | null }).account_type ?? null
-              : null;
-
-          if (nextAccountType !== "carpenter") {
-            setStatus("error");
-            setErrorMessage("We couldn't upgrade your account to carpenter. Please try again.");
-            return;
-          }
-        } else {
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("account_type")
-            .eq("id", authenticatedUser.id)
-            .single();
-
-          if (!active) {
-            return;
-          }
-
-          if (profileError) {
-            setStatus("error");
-            setErrorMessage(profileError.message);
-            return;
-          }
-
-          if (profile?.account_type !== pendingAccountType) {
-            const { error: updateProfileError } = await supabase
-              .from("profiles")
-              .update({ account_type: pendingAccountType })
-              .eq("id", authenticatedUser.id);
-
-            if (!active) {
-              return;
-            }
-
-            if (updateProfileError) {
-              setStatus("error");
-              setErrorMessage(updateProfileError.message);
-              return;
-            }
-          }
-        }
+      if (upgradeResult.status === "error") {
+        setStatus("error");
+        setErrorMessage(upgradeResult.message);
+        return;
       }
 
-      if (pendingInvitationToken) {
-        const { error: invitationError } = await supabase.rpc(
-          "accept_carpenter_invitation",
-          { invitation_token: pendingInvitationToken },
-        );
-
-        if (!active) {
-          return;
-        }
-
-        if (invitationError) {
-          setStatus("error");
-          setErrorMessage(invitationError.message);
-          return;
-        }
-      }
-
-      if (pendingAccountType || pendingInvitationToken) {
-        const metadataToClear: Record<string, null> = {};
-
-        if (pendingAccountType) {
-          metadataToClear.pending_account_type = null;
-        }
-
-        if (pendingInvitationToken) {
-          metadataToClear.pending_invitation_token = null;
-        }
-
-        if (Object.keys(metadataToClear).length > 0) {
-          const { error: updateUserError } = await supabase.auth.updateUser({
-            data: metadataToClear,
-          });
-
-          if (!active) {
-            return;
-          }
-
-          if (updateUserError) {
-            console.error("Failed to clear pending metadata", updateUserError);
-          }
-        }
-      }
+      authenticatedUser = upgradeResult.user;
 
       setStatus("idle");
       router.replace(redirectPath);

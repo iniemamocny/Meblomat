@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { SupabaseEnvWarning } from "@/components/SupabaseEnvWarning";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { VerificationHandler } from "@/components/auth/VerificationHandler";
+import {
+  VerificationHandler,
+  completePendingAccountUpgrades,
+} from "@/components/auth/VerificationHandler";
 import { isSupabaseConfiguredOnClient } from "@/lib/envClient";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
@@ -18,6 +21,9 @@ export default function VerifyPage() {
     type: null as string | null,
   });
   const [paramsLoaded, setParamsLoaded] = useState(false);
+  const [manualVerificationError, setManualVerificationError] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -91,11 +97,31 @@ export default function VerifyPage() {
           If you&apos;re entering a code manually, paste it below to complete the
           process.
         </p>
+        {manualVerificationError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm/6 text-red-900">
+            <p className="font-medium">We couldn&apos;t verify your request.</p>
+            <p className="mt-1 text-sm/5">{manualVerificationError}</p>
+          </div>
+        ) : null}
         <AuthForm
           view="verify_otp"
           className="space-y-4"
           showLinks={false}
           disableEmailRedirect
+          onSignedIn={async ({ session, supabase }) => {
+            const result = await completePendingAccountUpgrades(
+              supabase,
+              session.user,
+            );
+
+            if (result.status === "error") {
+              setManualVerificationError(result.message);
+              return false;
+            }
+
+            setManualVerificationError(null);
+            return true;
+          }}
         />
       </div>
     </div>
