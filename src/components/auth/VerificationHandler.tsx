@@ -29,6 +29,23 @@ const SUPPORTED_TYPES = new Set<SupportedVerificationType>([
   "email_change",
 ]);
 
+const TOKEN_HASH_VERIFICATION_TYPES = [
+  "signup",
+  "magiclink",
+  "invite",
+] as const;
+
+type TokenHashVerificationType = (typeof TOKEN_HASH_VERIFICATION_TYPES)[number];
+
+const TOKEN_HASH_VERIFICATION_TYPE_SET = new Set<string>(
+  TOKEN_HASH_VERIFICATION_TYPES,
+);
+
+const isTokenHashVerificationType = (
+  value: string,
+): value is TokenHashVerificationType =>
+  TOKEN_HASH_VERIFICATION_TYPE_SET.has(value);
+
 type SupabaseBrowserClient = ReturnType<typeof createSupabaseBrowserClient>;
 
 export async function verifyEmailChangeRequest(
@@ -69,13 +86,30 @@ export function VerificationHandler({
       return;
     }
 
-    if (!SUPPORTED_TYPES.has(type as SupportedVerificationType)) {
+    const verificationType = type as SupportedVerificationType;
+
+    if (!SUPPORTED_TYPES.has(verificationType)) {
       setStatus("error");
       setErrorMessage("This verification link is not valid.");
       return;
     }
 
-    if (type !== "email_change" && !code) {
+    const hasCode = Boolean(code);
+    const hasTokenHash = Boolean(tokenHash);
+    const canVerifyWithTokenHash =
+      hasTokenHash && isTokenHashVerificationType(verificationType);
+
+    if (verificationType === "email_change" && !hasCode && !hasTokenHash) {
+      setStatus("error");
+      setErrorMessage("This verification link is not valid.");
+      return;
+    }
+
+    if (
+      verificationType !== "email_change" &&
+      !hasCode &&
+      !canVerifyWithTokenHash
+    ) {
       setStatus("error");
       setErrorMessage("This verification link is not valid.");
       return;
@@ -89,7 +123,7 @@ export function VerificationHandler({
       let authError: AuthError | null = null;
       let authenticatedUser: User | null = null;
 
-      if (type === "email_change") {
+      if (verificationType === "email_change") {
         const token = tokenHash ?? code;
         if (!token) {
           setStatus("error");
@@ -107,8 +141,10 @@ export function VerificationHandler({
             authenticatedUser = session.user;
           }
         }
-      } else {
-        const exchangeResponse = await supabase.auth.exchangeCodeForSession(code!);
+      } else if (code) {
+        const exchangeResponse = await supabase.auth.exchangeCodeForSession(
+          code,
+        );
         const { data, error } = exchangeResponse;
         authError = error;
         if (!error) {
@@ -116,6 +152,21 @@ export function VerificationHandler({
 
           authenticatedUser = responseUser ?? session.user;
         }
+      } else if (tokenHash && isTokenHashVerificationType(verificationType)) {
+        const { data, error } = await supabase.auth.verifyOtp({
+          type: verificationType,
+          token_hash: tokenHash,
+        });
+        authError = error;
+        if (!error) {
+          const { user: responseUser, session } = data;
+
+          authenticatedUser = responseUser ?? session?.user ?? null;
+        }
+      } else {
+        setStatus("error");
+        setErrorMessage("This verification link is not valid.");
+        return;
       }
 
       if (!active) {
