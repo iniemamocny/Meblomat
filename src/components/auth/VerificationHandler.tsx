@@ -195,6 +195,33 @@ export function VerificationHandler({
             );
             return;
           }
+        } else if (pendingAccountType === "carpenter") {
+          const { data: promotionResult, error: promotionError } = await supabase.rpc(
+            "promote_to_carpenter",
+          );
+
+          if (!active) {
+            return;
+          }
+
+          if (promotionError) {
+            setStatus("error");
+            setErrorMessage(promotionError.message);
+            return;
+          }
+
+          const nextAccountType =
+            typeof promotionResult === "object" &&
+            promotionResult !== null &&
+            "account_type" in promotionResult
+              ? (promotionResult as { account_type?: string | null }).account_type ?? null
+              : null;
+
+          if (nextAccountType !== "carpenter") {
+            setStatus("error");
+            setErrorMessage("We couldn't upgrade your account to carpenter. Please try again.");
+            return;
+          }
         } else {
           const { data: profile, error: profileError } = await supabase
             .from("profiles")
