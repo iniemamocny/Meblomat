@@ -176,14 +176,69 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
           return;
         }
 
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ account_type: accountType })
-          .eq("id", user.id);
+        if (accountType === "admin") {
+          const { data: bootstrapResult, error: bootstrapError } = await supabase.rpc(
+            "bootstrap_admin",
+            { promote: true },
+          );
 
-        if (profileError) {
-          setFormError(profileError.message);
-          return;
+          if (bootstrapError) {
+            setFormError(bootstrapError.message);
+            return;
+          }
+
+          const promoted =
+            typeof bootstrapResult === "object" &&
+            bootstrapResult !== null &&
+            "promoted" in bootstrapResult &&
+            Boolean((bootstrapResult as { promoted?: boolean }).promoted);
+
+          const adminCount =
+            typeof bootstrapResult === "object" &&
+            bootstrapResult !== null &&
+            "admin_count" in bootstrapResult
+              ? Number((bootstrapResult as { admin_count?: number }).admin_count)
+              : null;
+
+          if (!promoted) {
+            setFormError(
+              adminCount !== null && adminCount > 0
+                ? "An administrator already exists, so this account cannot be promoted."
+                : "We couldn't promote your account to administrator. Please try again.",
+            );
+            return;
+          }
+        } else if (accountType === "carpenter") {
+          const { data: promotionResult, error: promotionError } = await supabase.rpc(
+            "promote_to_carpenter",
+          );
+
+          if (promotionError) {
+            setFormError(promotionError.message);
+            return;
+          }
+
+          const nextAccountType =
+            typeof promotionResult === "object" &&
+            promotionResult !== null &&
+            "account_type" in promotionResult
+              ? (promotionResult as { account_type?: AccountType | null }).account_type ?? null
+              : null;
+
+          if (nextAccountType !== "carpenter") {
+            setFormError("We couldn't upgrade your account to carpenter. Please try again.");
+            return;
+          }
+        } else {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({ account_type: accountType })
+            .eq("id", user.id);
+
+          if (profileError) {
+            setFormError(profileError.message);
+            return;
+          }
         }
 
         if (invitationToken) {
@@ -195,6 +250,20 @@ export function SignUpForm({ supabase, redirectPath = "/dashboard" }: SignUpForm
             setFormError(invitationError.message);
             return;
           }
+        }
+
+        const metadataToClear: Record<string, null> = { pending_account_type: null };
+
+        if (invitationToken) {
+          metadataToClear.pending_invitation_token = null;
+        }
+
+        const { error: clearMetadataError } = await supabase.auth.updateUser({
+          data: metadataToClear,
+        });
+
+        if (clearMetadataError) {
+          console.error("Failed to clear pending metadata", clearMetadataError);
         }
 
         if (redirectPath) {
