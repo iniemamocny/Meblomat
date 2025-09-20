@@ -611,6 +611,8 @@ If you prefer to bootstrap the administrator manually, walk through these steps 
    select public.bootstrap_admin();
    ```
 
+   A brand-new project returns a payload similar to `{ "admin_count": 0, "promoted": false }`. If `admin_count` is already greater than zero, the first administrator has been claimed and you can skip the remaining steps.
+
 2. **Ensure the target user is verified.** If the account has not been confirmed yet, update `auth.users.email_confirmed_at` so the impersonated profile matches what the production onboarding flow expects:
 
    ```sql
@@ -619,6 +621,8 @@ If you prefer to bootstrap the administrator manually, walk through these steps 
    set email_confirmed_at = now()
    where id = '00000000-0000-0000-0000-000000000000';
    ```
+
+   Skip this update if the row already has a timestamp—Supabase only allows verified accounts to claim the administrator role.
 
 3. **Impersonate the verified user and promote them.** Supabase resolves `auth.uid()` using JWT claims, so temporarily impersonate the account before calling the RPC:
 
@@ -639,6 +643,8 @@ If you prefer to bootstrap the administrator manually, walk through these steps 
    ```
 
    > ⚠️ Highlight the entire block above (from the first `set` through the `reset` statements) before clicking **Run** in the SQL editor. Supabase may recycle the session between individual executions, which clears the temporary claims and leaves `auth.uid()` empty.
+
+   When the RPC succeeds it returns `{ "admin_count": 1, "promoted": true }`, confirming that the impersonated user now owns the sole administrator slot.
 
    If you are already signed in as the verified user inside the SQL editor, you can call the RPC directly without impersonating them first:
 
