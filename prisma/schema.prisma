@@ -1,0 +1,53 @@
+// Prisma schema defining the core domain models for the carpentry system.
+// The models here are intentionally simple: a carpenter can have many
+// orders, each associated with a client. Orders track a description and
+// status. The database provider is PostgreSQL and the connection
+// information is sourced from the `DATABASE_URL` environment variable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Carpenter {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String?
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String?
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Order {
+  id          Int          @id @default(autoincrement())
+  description String
+  status      OrderStatus  @default(PENDING)
+  carpenter   Carpenter?   @relation(fields: [carpenterId], references: [id])
+  carpenterId Int?
+  client      Client?      @relation(fields: [clientId], references: [id])
+  clientId    Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
