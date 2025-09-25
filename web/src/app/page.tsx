@@ -169,6 +169,9 @@ export default async function Home() {
                   <div className="mt-4">
                     <InviteClientForm />
                   </div>
+                  <p className="mt-3 text-xs text-slate-400">
+                    Połącz funkcję z dostawcą e-mail (np. Resend), aby wysyłać spersonalizowane wiadomości z Supabase Admin API.
+                  </p>
                 </>
               ) : (
                 <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">

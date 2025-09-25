@@ -14,7 +14,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 # URL aplikacji używany do generowania linków afiliacyjnych
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-# Opcjonalnie – wymagane, jeśli chcesz wysyłać zaproszenia e-mail z panelu
+# Opcjonalnie – wymagane, jeśli chcesz wysyłać zaproszenia e-mail z uprawnieniami administratora Supabase
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
@@ -35,7 +35,7 @@ jesteś zalogowany, zostaniesz przekierowany na `/login`.
 - **Stolarz** – podczas rejestracji otrzymuje plan `carpenter_professional`, automatyczny kod afiliacyjny oraz sekcję w dashboardzie z linkiem do udostępniania.
 - **Klient** – może wybrać plan `client_free` (limit wysyłek do 2 stolarzy) lub `client_premium` (brak limitu). Informacje o planie i limicie są prezentowane po zalogowaniu.
 
-Supabase przechowuje powyższe informacje w `user_metadata`, dzięki czemu można je wykorzystywać w politykach RLS lub automatyzacji w bazie.
+Supabase przechowuje powyższe informacje w `user_metadata`, dzięki czemu można je wykorzystywać w politykach RLS lub automatyzacjach w bazie.
 
 ## Zapraszanie klientów
 
@@ -46,6 +46,8 @@ Aby skorzystać z funkcji:
 1. W Supabase przejdź do ustawień projektu i skopiuj `service_role key`.
 2. W pliku `.env.local` ustaw `SUPABASE_SERVICE_ROLE_KEY` z wartością klucza.
 3. Uruchom ponownie serwer deweloperski. Formularz w panelu będzie dostępny od razu i pozwoli wybrać plan (standardowy lub premium) dla zaproszonego klienta.
+
+Możesz rozszerzyć ten proces, integrując zewnętrznego dostawcę e-mail (np. Resend) i wykorzystując Supabase Admin API do personalizowania treści zaproszeń.
 
 ## Integracja z bazą danych
 
@@ -64,4 +66,3 @@ dane zaczną być pobierane bezpośrednio z bazy. Do momentu migracji panel prez
 3. **Powiadomienia e-mail/SMS** – rozbuduj proces wysyłki zaproszeń o dodatkowe powiadomienia (np. Resend, Twilio) przy zmianach statusu zleceń.
 
 Dokumentacja Supabase: https://supabase.com/docs
-

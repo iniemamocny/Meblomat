@@ -136,3 +136,4 @@ export async function signOutAction() {
   redirect('/login');
 }
 
+export { INITIAL_STATE };
