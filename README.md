@@ -1,180 +1,158 @@
-# Carpentry System – Deployment Guide
+# Carpentry System – Development & Deployment Guide
 
-This repository contains a minimal backend skeleton for a carpentry services
-platform.  The goal is to provide a quick way to prototype and deploy a
-database‐driven application for carpenters and their clients.  The current
-focus is on deployment and infrastructure; application logic (e.g. API
-routes, UI components) should be added as the project evolves.
+Ten repozytorium zawiera szkielet systemu do zarządzania warsztatem
+stolarskim. Znajdziesz tutaj gotowy frontend (Next.js), schemat Prisma
+oraz podstawowe narzędzia do łączenia się z bazą danych (Supabase na
+start, później Cloud SQL). Kod został przygotowany tak, aby można było
+natychmiast projektować interfejs i równolegle pracować nad warstwą
+backendową.
 
-## Overview
+## Co jest w pakiecie?
 
-The plan is to start with an MVP hosted on **Vercel** for preview and
-**Supabase** for the database.  Once the project matures, we will migrate
-the data to **Google Cloud SQL** and deploy the same container image to
-**Cloud Run**.  Continuous integration is handled by GitHub Actions.  Key
-components include:
+- **Dashboard Next.js** – aplikacja w katalogu `web/` z gotowym ekranem
+  startowym prezentującym zlecenia, klientów i zespół. W trybie braku
+  bazy aplikacja korzysta z danych przykładowych, aby UI pozostał w pełni
+  funkcjonalny.
+- **Prisma schema** – rozbudowany model domeny (`prisma/schema.prisma`)
+  z tabelami `Workshop`, `Carpenter`, `Client`, `Order`, `OrderTask` i
+  `OrderNote` oraz enumami `OrderStatus`, `OrderPriority`, `TaskStatus`.
+- **API Next.js** – endpointy `/api/health` oraz `/api/orders` używane do
+  monitorowania stanu połączenia i pobierania listy zleceń.
+- **Skrypty pomocnicze** – `npm run db:check` testuje połączenie z bazą,
+  a `prisma/migrate.sh` uruchamia migracje w sposób przyjazny dla CI/CD.
+- **Konfiguracja deploymentu** – Dockerfile w `docker/` oraz (do
+  uzupełnienia) workflow GitHub Actions do Vercela i Google Cloud Run.
 
-* **Dockerfile** – a multi‑stage build in `docker/Dockerfile` that
-  produces a slim Node.js runtime image.
-* **Prisma schema** – located in `prisma/schema.prisma`, defining
-  `Carpenter`, `Client` and `Order` models.
-* **GitHub Actions** workflows –
-  * `vercel-preview.yml` builds and deploys preview instances to Vercel.
-  * `gcp-deploy.yml` builds a container with Cloud Build and deploys it
-    to Cloud Run.
-* **Prisma migration script** – `prisma/migrate.sh` generates the Prisma
-  client and deploys pending migrations.
+## Szybki start
 
-## Database options
+1. Zainstaluj zależności (w katalogu głównym repozytorium):
+   ```bash
+   npm install
+   npm install --prefix web
+   ```
+2. Skopiuj plik `.env.example` do `.env` i uzupełnij zmienną
+   `DATABASE_URL` adresem połączeniowym z Supabase.
+3. Wygeneruj klienta Prisma i utwórz tabele:
+   ```bash
+   npx prisma generate
+   npx prisma migrate deploy
+   ```
+4. Uruchom lokalnie dashboard (w katalogu `web/`):
+   ```bash
+   npm run dev
+   ```
+   Interfejs będzie dostępny pod adresem `http://localhost:3000`.
 
-### Starting with Supabase
+Na tym etapie, jeśli baza nie ma jeszcze tabel, w panelu zobaczysz dane
+przykładowe. Po wykonaniu migracji i uzupełnieniu tabel wystarczy
+odświeżyć stronę – dashboard automatycznie przełączy się na dane
+produkcyjne.
 
-For rapid prototyping you can create a free project on [Supabase](https://supabase.com).  Supabase
-provides a hosted PostgreSQL database with a simple UI.  Copy the
-connection string (`postgresql://...`) into the `DATABASE_URL` secret in
-your GitHub repository.  When running locally, export the same URL
-before executing `prisma/migrate.sh`.
+## Model danych
 
-### Migrating to Cloud SQL
+| Model       | Kluczowe pola                              | Opis                                                 |
+|-------------|--------------------------------------------|------------------------------------------------------|
+| `Workshop`  | `name`, `location`                         | Warsztat lub zespół, do którego przypisani są stolarze. |
+| `Carpenter` | `name`, `skills[]`, `workshopId`           | Informacje o stolarzach, ich umiejętnościach i powiązaniu z warsztatem. |
+| `Client`    | `name`, `company`, `contact`               | Dane kontaktowe klientów oraz notatki.               |
+| `Order`     | `reference`, `status`, `priority`, `budgetCents`, `dueDate` | Zamówienia wraz z priorytetem, terminami i przypisaniami. |
+| `OrderTask` | `title`, `status`, `assigneeId`, `dueDate` | Zadania składające się na zamówienie (checklista).   |
+| `OrderNote` | `author`, `message`                        | Notatki wewnętrzne do zlecenia.                      |
 
-When the project grows, migrating to Google Cloud SQL in the `europe-central2`
-region (Warsaw) will provide better scalability and reliability.  There are
-two recommended ways to connect to Cloud SQL:
+Enumy:
 
-1. **Cloud SQL Auth Proxy** – a separate binary that runs alongside your
-   application.  It uses **IAM** to authenticate and establishes a TLS
-   connection to your instance.  The proxy handles encryption and
-   authorization so your application communicates with the database using
-   standard connection strings.  You must ensure that the instance is
-   reachable from your environment (either via a public IP address or a
-   private VPC connector)【981221121680752†L353-L390】.
+- `OrderStatus` – `PENDING`, `IN_PROGRESS`, `READY_FOR_DELIVERY`,
+  `COMPLETED`, `CANCELLED`
+- `OrderPriority` – `LOW`, `MEDIUM`, `HIGH`, `URGENT`
+- `TaskStatus` – `PENDING`, `IN_PROGRESS`, `COMPLETED`, `BLOCKED`
 
-2. **Cloud SQL Node.js connector** – a library that provides a native
-   alternative to the proxy.  It also performs IAM authorization and
-   uses TLS 1.3 encryption【623610891877361†L343-L359】.  Before you can use
-   it, grant your service account the *Cloud SQL Client* role and enable
-   the *Cloud SQL Admin API*【623610891877361†L373-L379】.  To integrate with
-   Prisma, you can start a local proxy by calling
-   `startLocalProxy()` and point `DATABASE_URL` at the Unix socket
-   provided【623610891877361†L519-L549】.
+## Endpointy API (Next.js)
 
-**Note about Vercel IPs:** Vercel’s infrastructure uses a range of dynamic
-IPs; therefore you cannot reliably allowlist a single IP address for
-Cloud SQL.  Vercel provides features like *Deployment Protection* or
-*Secure Compute* (enterprise) for dedicated IPs【338442436449284†L22-L30】.
-Until you migrate to Cloud Run, use the Node.js connector or Auth Proxy
-with a public IP.
+| Endpoint        | Opis                                                         |
+|-----------------|--------------------------------------------------------------|
+| `GET /api/health` | Zwraca status połączenia z bazą (`ok`, `unreachable`, `error`). |
+| `GET /api/orders` | Lista zleceń z relacjami. W przypadku braku tabel zwraca dane przykładowe. |
 
-## Connecting the application
+Kolejne kroki to dodanie metod `POST/PUT/DELETE`, które pozwolą
+zarządzać zleceniami z poziomu panelu.
 
-Prisma reads its connection string from the `DATABASE_URL` environment
-variable.  For Supabase the URL can be used directly.  For Cloud SQL via
-Auth Proxy, the connection string will look like
-`postgresql://<user>:<password>@127.0.0.1:5432/<db>?schema=public`.  If
-using the Node.js connector, the URL points to a Unix domain socket
-created by `startLocalProxy()` (e.g. `/tmp/cloudsql/instance.sock`).
+## Testowanie połączenia z bazą
 
-The `schema.prisma` models define three tables:
+Skrypt `npm run db:check` (uruchamiany w katalogu głównym) wczytuje
+zmienne z `.env`, łączy się z bazą za pomocą Prisma i wykonuje zapytanie
+`SELECT NOW()`. Jeśli zobaczysz błąd połączenia, upewnij się, że
+`DATABASE_URL` jest ustawione poprawnie oraz że masz dostęp sieciowy do
+instancji.
 
-| Model      | Key fields       | Description                              |
-|-----------|------------------|------------------------------------------|
-| Carpenter | `id`, `email`    | Stores carpenter identity and contact.    |
-| Client    | `id`, `email`    | Stores client identity and contact.       |
-| Order     | `id`, `status`   | Represents work requests between clients and carpenters. |
-
-See `prisma/schema.prisma` for details of the relationships and enum values.
-
-### Environment variables
-
-For local development it is convenient to define your database URL in a
-`.env` file so that tools like `prisma` and `ts-node` can load it
-automatically.  A template file `.env.example` is included in the
-repository; copy it to `.env` and replace the placeholders with your actual
-Supabase pooled connection string.  **Do not commit `.env` to version
-control.**
-
-When deploying via GitHub Actions or Vercel, set the `DATABASE_URL`
-secret/variable in the appropriate settings page.  The CI workflows
-forward this environment variable into your running application.
-
-### Testing connectivity
-
-To verify that your environment is configured correctly, run:
+## Uruchamianie migracji
 
 ```bash
-npm run db:check
-```
-
-This script (located at `scripts/check-db.ts`) loads `.env`, connects to
-the database using the Prisma client defined in `prisma/client.ts` and
-prints the current time returned by the server.  If it fails, ensure that
-`DATABASE_URL` is set and that the database is reachable from your
-environment.
-
-## Running migrations
-
-To apply migrations locally or in CI:
-
-```bash
-export DATABASE_URL="<your connection string>"
+export DATABASE_URL="postgresql://user:password@host:5432/db?sslmode=require"
 bash prisma/migrate.sh
 ```
 
-The script will generate the Prisma client and apply any pending
-migrations.  If `DATABASE_URL` is not set, the script exits with an
-error.
+Skrypt wygeneruje klienta Prisma i zastosuje wszystkie oczekujące
+migracje. W przypadku Supabase możesz skorzystać zarówno z portu 5432
+(połączenie bezpośrednie), jak i z PgBouncera na porcie 6543.
 
-## GitHub Actions workflows
+## Integracja z Supabase i Google Cloud SQL
 
-### Preview deployments on Vercel
+### Start na Supabase
 
-The workflow in `.github/workflows/vercel-preview.yml` triggers on every
-push.  It installs dependencies, builds the project and uses the Vercel
-CLI to create a preview deployment.  You must set the following secrets
-in your repository:
+Supabase oferuje szybki start z bazą PostgreSQL. W panelu projektów
+kopiuj connection string (najlepiej PgBouncer) i umieść go w `.env`.
+Przy wdrażaniu na Vercelu ustaw tę zmienną w sekcji *Environment
+Variables*. Skrypt `npm run db:check` powinien zwrócić aktualny czas z
+serwera, co potwierdzi poprawne połączenie.
 
-* `VERCEL_TOKEN` – a personal or machine token created in the Vercel
-  dashboard.
-* `VERCEL_ORG_ID` – the organisation ID from Vercel.
-* `VERCEL_PROJECT_ID` – the project ID from Vercel.
+### Migracja do Cloud SQL
 
-The action runs `vercel pull` to fetch project settings, `vercel build`
-to create a prebuilt output and finally `vercel deploy --prebuilt` to
-publish the preview.
+Gdy projekt urośnie, zaplanuj migrację do Google Cloud SQL w regionie
+`europe-central2` (Warszawa). Masz dwa warianty połączenia:
 
-### Deploying to Google Cloud Run
+1. **Cloud SQL Auth Proxy** – osobny proces uwierzytelniany przez IAM,
+   zestawia szyfrowane połączenie TLS. Wymaga wystawienia publicznego IP
+   lub prywatnego łącza VPC.
+2. **Cloud SQL Node.js Connector** – biblioteka dołączana do aplikacji,
+   również korzystająca z IAM i TLS 1.3. Po zainicjalizowaniu funkcją
+   `startLocalProxy()` możesz przekierować `DATABASE_URL` na gniazdo Unix.
 
-The workflow in `.github/workflows/gcp-deploy.yml` triggers when the
-`main` branch is updated.  It authenticates to Google Cloud using a
-service account key stored in the `GCP_SA_KEY` secret, builds a Docker
-image with Cloud Build and publishes it to Artifact Registry, then
-deploys the image to a Cloud Run service.  Configuration highlights:
+Pamiętaj, że Vercel nie gwarantuje stałych adresów IP – użyj proxy lub
+konektora, aby uniknąć konieczności białych list IP.
 
-| Secret             | Purpose                                                 |
-|--------------------|---------------------------------------------------------|
-| `GCP_SA_KEY`       | JSON service account key with `Cloud Run
-  Admin` and `Artifact Registry Writer` roles. |
-| `GCP_PROJECT_ID`   | ID of your Google Cloud project.                        |
-| `GCP_REGION`       | Region for Cloud Run (e.g. `europe-central2`).          |
-| `DATABASE_URL`     | Connection string for your Cloud SQL or Supabase DB.    |
-| `INSTANCE_CONNECTION_NAME` | Cloud SQL instance connection string (e.g. `project:region:instance`). |
+## Docker i deployment
 
-During deployment, the `env_vars` property sets `DATABASE_URL`,
-`INSTANCE_CONNECTION_NAME` and `NODE_ENV` inside the Cloud Run service.  If
-you are using the Cloud SQL Auth Proxy or Node.js connector, you must
-mount the proxy or configure the connector in your application code.
+- `docker/Dockerfile` – wieloetapowy build, który najpierw instaluje
+  zależności i buduje projekt, a następnie przygotowuje lekki obraz
+  runtime z Node.js. Kontener domyślnie wystawia port 3000.
+- Po zbudowaniu obrazu (`docker build -t meblomat .`) możesz uruchomić
+  kontener lokalnie: `docker run -p 3000:3000 meblomat`.
 
-## Next steps
+Workflow GitHub Actions (`.github/workflows/`) pozostawiono pusty do
+uzupełnienia – możesz dodać automatyczne publikacje do Vercela i Cloud
+Run, gdy projekt będzie gotowy do wdrożeń.
 
-1. **Add application logic** – implement REST/GraphQL endpoints or a
-   frontend using a framework of your choice.  The Prisma client will
-   enable you to query and mutate data easily.
-2. **Secure your secrets** – never commit database passwords or service
-   account keys to Git.  Use GitHub repository secrets for all
-   sensitive values.
-3. **Monitor your deployments** – enable logging and error reporting
-   through Google Cloud and Vercel dashboards.
+## Struktura repozytorium
 
-With this repository structure you can rapidly iterate on your carpentry
-platform, deploy previews for every pull request and move to a fully
-managed Google Cloud stack when ready.
+```
+.
+├── prisma/            # Schema, klient Prisma i skrypt migracyjny
+├── scripts/           # check-db.ts (test połączenia z bazą)
+├── web/               # Aplikacja Next.js (dashboard)
+│   ├── src/app/       # Strony, endpointy API i style globalne
+│   ├── src/components # Komponenty UI (statusy, pipeline zleceń)
+│   ├── src/lib/       # Dane przykładowe, formatowanie, helpery Prisma
+│   └── src/server/    # Logika łączenia danych dla dashboardu
+├── docker/            # Dockerfile dla Cloud Run
+└── README.md          # Ten plik
+```
+
+## Następne kroki
+
+1. Zaimplementuj endpointy `POST`/`PATCH` dla zamówień oraz notatek.
+2. Dodaj autoryzację (np. Clerk, Auth0 lub Supabase Auth).
+3. Rozbuduj pipeline CI/CD i monitoruj logi po wdrożeniu na produkcję.
+
+Powodzenia w dalszym rozwijaniu Meblomatu! Jeśli potrzebujesz kolejnych
+funkcjonalności, rozbuduj moduły w katalogach `web/src/server` i
+`web/src/app/api`.

@@ -7,6 +7,7 @@
  * automatically from a .env file by requiring dotenv/config.
  */
 import 'dotenv/config';
+import { Prisma } from '@prisma/client';
 import prisma from '../prisma/client';
 
 async function main() {
@@ -15,6 +16,13 @@ async function main() {
       'SELECT NOW() AS now',
     );
     console.log('Database connection successful. Current time:', result?.now);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      console.error('Database connection failed: unable to reach the server.');
+    } else {
+      console.error('Database connection failed:', error);
+    }
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }

@@ -1,7 +1,21 @@
-import type { NextConfig } from "next";
+import path from 'path';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    outputFileTracingRoot: path.join(__dirname, '..'),
+  },
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = config.resolve.alias ?? {};
+    config.resolve.alias['@meblomat/prisma'] = path.join(
+      __dirname,
+      '..',
+      'prisma',
+      'client.ts',
+    );
+    return config;
+  },
 };
 
 export default nextConfig;

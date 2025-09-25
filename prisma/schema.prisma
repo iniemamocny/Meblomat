@@ -1,8 +1,8 @@
 // Prisma schema defining the core domain models for the carpentry system.
-// The models here are intentionally simple: a carpenter can have many
-// orders, each associated with a client. Orders track a description and
-// status. The database provider is PostgreSQL and the connection
-// information is sourced from the `DATABASE_URL` environment variable.
+// The models capture workshops, carpenters, clients and orders together
+// with supporting tables for task tracking and internal notes.  The
+// database provider is PostgreSQL and the connection information is
+// sourced from the `DATABASE_URL` environment variable.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,41 +13,121 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Workshop {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  location    String?
+  carpenters  Carpenter[]
+  orders      Order[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
 model Carpenter {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String    @unique
-  phone     String?
-  orders    Order[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          Int         @id @default(autoincrement())
+  name        String
+  email       String      @unique
+  phone       String?
+  headline    String?
+  bio         String?
+  avatarUrl   String?
+  skills      String[]    @default([])
+  workshopId  Int?
+  workshop    Workshop?   @relation(fields: [workshopId], references: [id])
+  orders      Order[]
+  tasks       OrderTask[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([workshopId])
 }
 
 model Client {
   id        Int       @id @default(autoincrement())
   name      String
+  company   String?
   email     String    @unique
   phone     String?
+  address   String?
+  notes     String?
   orders    Order[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
 model Order {
-  id          Int          @id @default(autoincrement())
-  description String
-  status      OrderStatus  @default(PENDING)
-  carpenter   Carpenter?   @relation(fields: [carpenterId], references: [id])
-  carpenterId Int?
-  client      Client?      @relation(fields: [clientId], references: [id])
-  clientId    Int?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           Int           @id @default(autoincrement())
+  reference    String        @unique @default(uuid())
+  title        String
+  description  String?
+  status       OrderStatus   @default(PENDING)
+  priority     OrderPriority @default(MEDIUM)
+  budgetCents  Int?
+  startDate    DateTime?
+  dueDate      DateTime?
+  deliveredAt  DateTime?
+  carpenterId  Int?
+  clientId     Int?
+  workshopId   Int?
+  carpenter    Carpenter?    @relation(fields: [carpenterId], references: [id])
+  client       Client?       @relation(fields: [clientId], references: [id])
+  workshop     Workshop?     @relation(fields: [workshopId], references: [id])
+  tasks        OrderTask[]
+  notes        OrderNote[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status, priority])
+  @@index([dueDate])
+  @@index([carpenterId])
+  @@index([clientId])
+}
+
+model OrderTask {
+  id         Int        @id @default(autoincrement())
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId    Int
+  title      String
+  status     TaskStatus @default(PENDING)
+  assigneeId Int?
+  assignee   Carpenter? @relation(fields: [assigneeId], references: [id])
+  notes      String?
+  dueDate    DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([orderId, status])
+}
+
+model OrderNote {
+  id        Int      @id @default(autoincrement())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   Int
+  author    String
+  role      String?
+  message   String
+  createdAt DateTime @default(now())
 }
 
 enum OrderStatus {
   PENDING
   IN_PROGRESS
+  READY_FOR_DELIVERY
   COMPLETED
   CANCELLED
+}
+
+enum OrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
 }
