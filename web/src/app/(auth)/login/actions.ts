@@ -1,19 +1,10 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { resolveCarpenterMetadata, resolveClientMetadata } from '@/lib/auth/metadata';
+import { ClientSubscriptionPlan, UserRole } from '@/lib/domain';
 import { createSupabaseServerActionClient } from '@/lib/supabase/server';
-import {
-  CarpenterSubscriptionPlan,
-  ClientSubscriptionPlan,
-  UserRole,
-} from '@/lib/domain';
-
-type FormState = {
-  status: 'idle' | 'error' | 'success';
-  message?: string;
-};
-
-const INITIAL_STATE: FormState = { status: 'idle' };
+import { INITIAL_STATE, type FormState } from './state';
 
 function resolveUnexpectedErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.includes('Brak wymaganej zmiennej środowiskowej')) {
@@ -27,39 +18,6 @@ function normalizeString(value: FormDataEntryValue | null): string {
     return value.trim();
   }
   return '';
-}
-
-function resolveCarpenterMetadata() {
-  const affiliateCode = generateAffiliateCode();
-  return {
-    role: UserRole.CARPENTER,
-    subscriptionPlan: CarpenterSubscriptionPlan.PROFESSIONAL,
-    affiliateCode,
-  } satisfies Record<string, unknown>;
-}
-
-function generateAffiliateCode() {
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    const buffer = new Uint8Array(4);
-    crypto.getRandomValues(buffer);
-    return Array.from(buffer, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  }
-
-  // Fallback for environments without Web Crypto (should not happen in Next.js runtimes)
-  return Math.random().toString(16).slice(2, 10).padEnd(8, '0');
-}
-
-function resolveClientMetadata(plan: ClientSubscriptionPlan, invitedBy?: string | null) {
-  const baseMetadata = {
-    role: UserRole.CLIENT,
-    subscriptionPlan: plan,
-    projectLimit: plan === ClientSubscriptionPlan.FREE ? 2 : null,
-  } satisfies Record<string, unknown>;
-
-  if (invitedBy) {
-    return { ...baseMetadata, invitedBy };
-  }
-  return baseMetadata;
 }
 
 export async function signInAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -178,4 +136,3 @@ export async function signOutAction() {
   redirect('/login');
 }
 
-export { INITIAL_STATE };

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { DatabaseStatusCard } from '@/components/database-status-card';
 import { CopyField } from '@/components/copy-field';
+import { InviteClientForm } from '@/components/invite-client-form';
 import { OrderPriorityBadge, OrderStatusBadge } from '@/components/order-status-pill';
 import { OrdersPipeline } from '@/components/orders-pipeline';
 import { SignOutButton } from '@/components/sign-out-button';
@@ -65,6 +66,7 @@ export default async function Home() {
 
   const siteUrl = getSiteUrl().replace(/\/$/, '');
   const affiliateLink = `${siteUrl}/login?ref=${affiliateCode ?? session.user.id}`;
+  const serviceRoleConfigured = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   const roleLabel =
     userRole === UserRole.ADMIN
@@ -157,13 +159,23 @@ export default async function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow shadow-black/30">
               <h3 className="text-base font-semibold text-white">Zaproszenia e-mail</h3>
               <p className="mt-2 text-sm text-slate-300">
-                Wysyłaj spersonalizowane zaproszenia klientom bezpośrednio z panelu po skonfigurowaniu funkcji serwerowej z kluczem
-                <code className="mx-1 rounded bg-slate-950/80 px-1">SUPABASE_SERVICE_ROLE_KEY</code>.
+                Wprowadź adres e-mail klienta, aby Supabase wysłało do niego zaproszenie z linkiem aktywacyjnym.
               </p>
-              <p className="mt-3 text-xs text-slate-400">
-                Dodaj integrację z dostawcą e-mail (np. Resend) i użyj Supabase Admin API, aby automatycznie tworzyć konta klientów i wysyłać im link do
-                rejestracji.
-              </p>
+              {serviceRoleConfigured ? (
+                <>
+                  <p className="mt-3 text-xs text-slate-400">
+                    Zaproszone osoby otrzymają konto klienta powiązane automatycznie z Twoim warsztatem. Możesz od razu wybrać ich plan.
+                  </p>
+                  <div className="mt-4">
+                    <InviteClientForm />
+                  </div>
+                </>
+              ) : (
+                <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                  Skonfiguruj zmienną <code className="rounded bg-slate-950/70 px-1">SUPABASE_SERVICE_ROLE_KEY</code>, aby aktywować wysyłkę zaproszeń z panelu.
+                  Klucz znajdziesz w ustawieniach swojego projektu Supabase.
+                </p>
+              )}
             </div>
           </section>
         ) : null}

@@ -2,6 +2,7 @@
 
 Interfejs Next.js zbudowany na potrzeby zarządzania warsztatem stolarskim. Repozytorium zawiera pełny dashboard oraz system
 logowania/rejestracji oparty o Supabase z rozróżnieniem ról (administrator, stolarz, klient) i planów subskrypcyjnych.
+Stolarze mają do dyspozycji automatyczne linki afiliacyjne oraz formularz zapraszania klientów przez e-mail.
 
 ## Wymagane zmienne środowiskowe
 
@@ -13,7 +14,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 # URL aplikacji używany do generowania linków afiliacyjnych
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-# Opcjonalnie – wymagane, jeśli chcesz wysyłać zaproszenia e-mail z uprawnieniami administratora Supabase
+# Opcjonalnie – wymagane, jeśli chcesz wysyłać zaproszenia e-mail z panelu
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
@@ -36,6 +37,16 @@ jesteś zalogowany, zostaniesz przekierowany na `/login`.
 
 Supabase przechowuje powyższe informacje w `user_metadata`, dzięki czemu można je wykorzystywać w politykach RLS lub automatyzacji w bazie.
 
+## Zapraszanie klientów
+
+W panelu stolarza znajduje się formularz wysyłki zaproszeń e-mail. Po wprowadzeniu adresu klienta Supabase wysyła standardowe zaproszenie, a konto użytkownika zostaje automatycznie przypisane do warsztatu zapraszającego.
+
+Aby skorzystać z funkcji:
+
+1. W Supabase przejdź do ustawień projektu i skopiuj `service_role key`.
+2. W pliku `.env.local` ustaw `SUPABASE_SERVICE_ROLE_KEY` z wartością klucza.
+3. Uruchom ponownie serwer deweloperski. Formularz w panelu będzie dostępny od razu i pozwoli wybrać plan (standardowy lub premium) dla zaproszonego klienta.
+
 ## Integracja z bazą danych
 
 Dashboard korzysta z Prisma i łączy się z bazą (np. Supabase Postgres). Po skonfigurowaniu zmiennej `DATABASE_URL` i wykonaniu migracji:
@@ -48,9 +59,9 @@ dane zaczną być pobierane bezpośrednio z bazy. Do momentu migracji panel prez
 
 ## Kolejne kroki
 
-1. **Zaproszenia e-mail** – po ustawieniu `SUPABASE_SERVICE_ROLE_KEY` dodaj akcję serwerową wykorzystującą `supabase.auth.admin.inviteUserByEmail`, aby stolarze mogli wysyłać zaproszenia bezpośrednio z panelu.
-2. **Płatności** – podłącz wybrany procesor (np. Stripe) i aktualizuj `user_metadata.subscriptionPlan` po zmianie planu.
-3. **Uprawnienia RLS** – na podstawie pola `role` zdefiniuj polityki bezpieczeństwa w tabelach Supabase.
+1. **Płatności** – podłącz wybrany procesor (np. Stripe) i aktualizuj `user_metadata.subscriptionPlan` po zmianie planu.
+2. **Uprawnienia RLS** – na podstawie pola `role` zdefiniuj polityki bezpieczeństwa w tabelach Supabase.
+3. **Powiadomienia e-mail/SMS** – rozbuduj proces wysyłki zaproszeń o dodatkowe powiadomienia (np. Resend, Twilio) przy zmianach statusu zleceń.
 
 Dokumentacja Supabase: https://supabase.com/docs
 
