@@ -54,7 +54,7 @@ export async function signInAction(_: FormState, formData: FormData): Promise<Fo
     return { status: 'error', message: 'Podaj adres e-mail i hasło.' };
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createSupabaseServerClient(cookieStore);
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -91,7 +91,7 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     return { status: 'error', message: 'Wybierz typ konta.' };
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createSupabaseServerClient(cookieStore);
 
   const metadata =
@@ -133,7 +133,7 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
 }
 
 export async function signOutAction() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createSupabaseServerClient(cookieStore);
   await supabase.auth.signOut();
   redirect('/login');

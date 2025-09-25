@@ -18,7 +18,7 @@ import { getDashboardData } from '@/server/dashboard';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createSupabaseServerClient(cookieStore);
   const {
     data: { session },
