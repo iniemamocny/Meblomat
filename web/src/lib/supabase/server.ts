@@ -5,33 +5,57 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
-type CookieAccessor = () => CookieStore;
+type CookieSetter = (options: { name: string; value: string } & CookieOptions) => void;
 
-function createCookieAdapter(accessCookies: CookieAccessor) {
-  return {
-    get(name: string) {
-      return accessCookies().get(name)?.value;
-    },
-    set(name: string, value: string, options: CookieOptions) {
-      accessCookies().set({ name, value, ...options });
-    },
-    remove(name: string, options: CookieOptions) {
-      accessCookies().set({ name, value: '', ...options, expires: new Date(0) });
-    },
-  };
+type MutableCookieStore = CookieStore & {
+  set?: CookieSetter;
+};
+
+function persistCookie(
+  cookieStore: CookieStore,
+  name: string,
+  value: string,
+  options: CookieOptions | undefined,
+) {
+  const mutableStore = cookieStore as MutableCookieStore;
+  if (typeof mutableStore.set !== 'function') {
+    return;
+  }
+
+  try {
+    mutableStore.set({ name, value, ...(options ?? {}) });
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Nie udało się zaktualizować ciasteczka Supabase.', error);
+    }
+  }
 }
 
-function createSupabaseClient(accessCookies: CookieAccessor): SupabaseClient {
+function createSupabaseClient(cookieStore: CookieStore): SupabaseClient {
   return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: createCookieAdapter(accessCookies),
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value;
+      },
+      set(name: string, value: string, options: CookieOptions) {
+        persistCookie(cookieStore, name, value, options);
+      },
+      remove(name: string, options: CookieOptions) {
+        persistCookie(cookieStore, name, '', {
+          ...(options ?? {}),
+          maxAge: 0,
+          expires: new Date(0),
+        });
+      },
+    },
   });
 }
 
 export function createSupabaseServerClient(cookieStore: CookieStore): SupabaseClient {
-  return createSupabaseClient(() => cookieStore);
+  return createSupabaseClient(cookieStore);
 }
 
 export async function createSupabaseServerActionClient(): Promise<SupabaseClient> {
   const cookieStore = await cookies();
-  return createSupabaseClient(() => cookieStore);
+  return createSupabaseClient(cookieStore);
 }
