@@ -262,7 +262,7 @@ BEGIN
       SELECT 1 FROM pg_policies
       WHERE schemaname = 'public'
         AND tablename = table_name
-        AND polname = policy_name
+        AND policyname = policy_name
     ) THEN
       EXECUTE format(
         'CREATE POLICY %I ON public.%I FOR ALL TO authenticated USING (true) WITH CHECK (true);',
