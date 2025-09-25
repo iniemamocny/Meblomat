@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Meblomat – panel warsztatu z logowaniem Supabase
 
-## Getting Started
+Interfejs Next.js zbudowany na potrzeby zarządzania warsztatem stolarskim. Repozytorium zawiera pełny dashboard oraz system
+logowania/rejestracji oparty o Supabase z rozróżnieniem ról (administrator, stolarz, klient) i planów subskrypcyjnych.
 
-First, run the development server:
+## Wymagane zmienne środowiskowe
+
+Utwórz plik `.env.local` w katalogu `web/` i uzupełnij go o dane swojego projektu Supabase:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+# URL aplikacji używany do generowania linków afiliacyjnych
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Opcjonalnie – wymagane, jeśli chcesz wysyłać zaproszenia e-mail z uprawnieniami administratora Supabase
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+Po zmianie wartości uruchom `npm install` w katalogu `web/`, aby zainstalować zależności Supabase.
+
+## Uruchamianie projektu
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Domyślnie aplikacja nasłuchuje na porcie `3000`. Po uruchomieniu odwiedź `http://localhost:3000`, aby zobaczyć panel. Jeśli nie
+jesteś zalogowany, zostaniesz przekierowany na `/login`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Role i plany kont
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Administrator** – konta tworzone ręcznie w Supabase (ustaw `role: "admin"` w `user_metadata`).
+- **Stolarz** – podczas rejestracji otrzymuje plan `carpenter_professional`, automatyczny kod afiliacyjny oraz sekcję w dashboardzie z linkiem do udostępniania.
+- **Klient** – może wybrać plan `client_free` (limit wysyłek do 2 stolarzy) lub `client_premium` (brak limitu). Informacje o planie i limicie są prezentowane po zalogowaniu.
 
-## Learn More
+Supabase przechowuje powyższe informacje w `user_metadata`, dzięki czemu można je wykorzystywać w politykach RLS lub automatyzacji w bazie.
 
-To learn more about Next.js, take a look at the following resources:
+## Integracja z bazą danych
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Dashboard korzysta z Prisma i łączy się z bazą (np. Supabase Postgres). Po skonfigurowaniu zmiennej `DATABASE_URL` i wykonaniu migracji:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx prisma migrate deploy
+```
 
-## Deploy on Vercel
+dane zaczną być pobierane bezpośrednio z bazy. Do momentu migracji panel prezentuje dane przykładowe.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Kolejne kroki
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Zaproszenia e-mail** – po ustawieniu `SUPABASE_SERVICE_ROLE_KEY` dodaj akcję serwerową wykorzystującą `supabase.auth.admin.inviteUserByEmail`, aby stolarze mogli wysyłać zaproszenia bezpośrednio z panelu.
+2. **Płatności** – podłącz wybrany procesor (np. Stripe) i aktualizuj `user_metadata.subscriptionPlan` po zmianie planu.
+3. **Uprawnienia RLS** – na podstawie pola `role` zdefiniuj polityki bezpieczeństwa w tabelach Supabase.
+
+Dokumentacja Supabase: https://supabase.com/docs
+

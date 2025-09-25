@@ -28,3 +28,26 @@ export const TaskStatus = Object.freeze({
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
 export const TASK_STATUSES = Object.values(TaskStatus) as TaskStatus[];
+
+export const UserRole = Object.freeze({
+  ADMIN: 'admin',
+  CARPENTER: 'carpenter',
+  CLIENT: 'client',
+} as const);
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+export const ClientSubscriptionPlan = Object.freeze({
+  FREE: 'client_free',
+  PREMIUM: 'client_premium',
+} as const);
+
+export type ClientSubscriptionPlan =
+  (typeof ClientSubscriptionPlan)[keyof typeof ClientSubscriptionPlan];
+
+export const CarpenterSubscriptionPlan = Object.freeze({
+  PROFESSIONAL: 'carpenter_professional',
+} as const);
+
+export type CarpenterSubscriptionPlan =
+  (typeof CarpenterSubscriptionPlan)[keyof typeof CarpenterSubscriptionPlan];
