@@ -11,11 +11,8 @@ SET search_path = public;
 -- Enable required extensions.
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Enumerated types matching the Prisma enums.  Each block both creates the
 -- enum when missing and ensures every expected value exists.
 DO $$
-DECLARE
-  value TEXT;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'orderstatus') THEN
     CREATE TYPE public.orderstatus AS ENUM (
@@ -26,23 +23,16 @@ BEGIN
       'CANCELLED'
     );
   END IF;
-
-  FOREACH value IN ARRAY ARRAY[
-    'PENDING',
-    'IN_PROGRESS',
-    'READY_FOR_DELIVERY',
-    'COMPLETED',
-    'CANCELLED'
-  ]
-  LOOP
-    EXECUTE format('ALTER TYPE public.orderstatus ADD VALUE IF NOT EXISTS %L', value);
-  END LOOP;
 END
 $$;
 
+ALTER TYPE public.orderstatus ADD VALUE IF NOT EXISTS 'PENDING';
+ALTER TYPE public.orderstatus ADD VALUE IF NOT EXISTS 'IN_PROGRESS';
+ALTER TYPE public.orderstatus ADD VALUE IF NOT EXISTS 'READY_FOR_DELIVERY';
+ALTER TYPE public.orderstatus ADD VALUE IF NOT EXISTS 'COMPLETED';
+ALTER TYPE public.orderstatus ADD VALUE IF NOT EXISTS 'CANCELLED';
+
 DO $$
-DECLARE
-  value TEXT;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'orderpriority') THEN
     CREATE TYPE public.orderpriority AS ENUM (
@@ -52,22 +42,15 @@ BEGIN
       'URGENT'
     );
   END IF;
-
-  FOREACH value IN ARRAY ARRAY[
-    'LOW',
-    'MEDIUM',
-    'HIGH',
-    'URGENT'
-  ]
-  LOOP
-    EXECUTE format('ALTER TYPE public.orderpriority ADD VALUE IF NOT EXISTS %L', value);
-  END LOOP;
 END
 $$;
 
+ALTER TYPE public.orderpriority ADD VALUE IF NOT EXISTS 'LOW';
+ALTER TYPE public.orderpriority ADD VALUE IF NOT EXISTS 'MEDIUM';
+ALTER TYPE public.orderpriority ADD VALUE IF NOT EXISTS 'HIGH';
+ALTER TYPE public.orderpriority ADD VALUE IF NOT EXISTS 'URGENT';
+
 DO $$
-DECLARE
-  value TEXT;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'taskstatus') THEN
     CREATE TYPE public.taskstatus AS ENUM (
@@ -77,18 +60,13 @@ BEGIN
       'BLOCKED'
     );
   END IF;
-
-  FOREACH value IN ARRAY ARRAY[
-    'PENDING',
-    'IN_PROGRESS',
-    'COMPLETED',
-    'BLOCKED'
-  ]
-  LOOP
-    EXECUTE format('ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS %L', value);
-  END LOOP;
 END
 $$;
+
+ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'PENDING';
+ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'IN_PROGRESS';
+ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'COMPLETED';
+ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'BLOCKED';
 
 -- Helper function to keep the updated_at columns in sync.
 CREATE OR REPLACE FUNCTION public.set_updated_at()
