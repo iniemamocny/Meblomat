@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS workshops (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_workshops_updated_at ON workshops;
+
 CREATE TRIGGER trg_workshops_updated_at
 BEFORE UPDATE ON workshops
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -86,6 +88,8 @@ CREATE TABLE IF NOT EXISTS carpenters (
 
 CREATE INDEX IF NOT EXISTS idx_carpenters_workshop_id ON carpenters (workshop_id);
 
+DROP TRIGGER IF EXISTS trg_carpenters_updated_at ON carpenters;
+
 CREATE TRIGGER trg_carpenters_updated_at
 BEFORE UPDATE ON carpenters
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -104,6 +108,8 @@ CREATE TABLE IF NOT EXISTS clients (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+DROP TRIGGER IF EXISTS trg_clients_updated_at ON clients;
 
 CREATE TRIGGER trg_clients_updated_at
 BEFORE UPDATE ON clients
@@ -147,6 +153,8 @@ CREATE INDEX IF NOT EXISTS idx_orders_due_date ON orders (due_date);
 CREATE INDEX IF NOT EXISTS idx_orders_carpenter_id ON orders (carpenter_id);
 CREATE INDEX IF NOT EXISTS idx_orders_client_id ON orders (client_id);
 
+DROP TRIGGER IF EXISTS trg_orders_updated_at ON orders;
+
 CREATE TRIGGER trg_orders_updated_at
 BEFORE UPDATE ON orders
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -175,6 +183,8 @@ CREATE TABLE IF NOT EXISTS order_tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_order_tasks_order_status ON order_tasks (order_id, status);
+
+DROP TRIGGER IF EXISTS trg_order_tasks_updated_at ON order_tasks;
 
 CREATE TRIGGER trg_order_tasks_updated_at
 BEFORE UPDATE ON order_tasks
