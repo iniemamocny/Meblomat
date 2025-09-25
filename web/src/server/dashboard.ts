@@ -1,5 +1,5 @@
 import prisma from '@meblomat/prisma';
-import { OrderPriority, OrderStatus, TaskStatus } from '@prisma/client';
+import { OrderPriority, OrderStatus, TaskStatus } from '@/lib/domain';
 import { createSampleRecords } from '@/lib/sample-data';
 import {
   extractPrismaErrorMessage,
@@ -51,6 +51,18 @@ type RawRecords = {
   carpenters: RawCarpenter[];
   clients: RawClient[];
 };
+
+type PrismaOrderRecord = RawOrder;
+
+type PrismaCarpenterRecord = Omit<RawCarpenter, 'skills'> & {
+  skills?: string[] | null;
+};
+
+type PrismaClientRecord = RawClient;
+
+function isClosedStatus(status: OrderStatus) {
+  return status === OrderStatus.COMPLETED || status === OrderStatus.CANCELLED;
+}
 
 export type DashboardOrder = {
   id: number;
@@ -161,7 +173,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 }
 
 async function fetchRecordsFromDatabase(): Promise<RawRecords> {
-  const [orders, carpenters, clients] = await Promise.all([
+  const [orders, carpenters, clients] = (await Promise.all([
     prisma.order.findMany({
       include: {
         carpenter: { select: { id: true, name: true } },
@@ -186,10 +198,10 @@ async function fetchRecordsFromDatabase(): Promise<RawRecords> {
         orders: { select: { status: true, createdAt: true }, take: 50 },
       },
     }),
-  ]);
+  ])) as [PrismaOrderRecord[], PrismaCarpenterRecord[], PrismaClientRecord[]];
 
   return {
-    orders: orders.map<RawOrder>((order) => ({
+    orders: orders.map((order) => ({
       id: order.id,
       reference: order.reference,
       title: order.title,
@@ -212,7 +224,7 @@ async function fetchRecordsFromDatabase(): Promise<RawRecords> {
         dueDate: task.dueDate,
       })),
     })),
-    carpenters: carpenters.map<RawCarpenter>((carpenter) => ({
+    carpenters: carpenters.map((carpenter) => ({
       id: carpenter.id,
       name: carpenter.name,
       email: carpenter.email,
@@ -228,7 +240,7 @@ async function fetchRecordsFromDatabase(): Promise<RawRecords> {
         deliveredAt: order.deliveredAt,
       })),
     })),
-    clients: clients.map<RawClient>((client) => ({
+    clients: clients.map((client) => ({
       id: client.id,
       name: client.name,
       company: client.company,
@@ -341,10 +353,7 @@ function buildDashboard(
   for (const order of records.orders) {
     const dashboardOrder = toDashboardOrder(order);
     ordersByStatus[order.status].push(dashboardOrder);
-    if (
-      order.dueDate &&
-      ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(order.status)
-    ) {
+    if (order.dueDate && !isClosedStatus(order.status)) {
       upcoming.push(dashboardOrder);
     }
   }
@@ -357,13 +366,10 @@ function buildDashboard(
 
   const counts = {
     orders: records.orders.length,
-    activeOrders: records.orders.filter(
-      (order) => ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(order.status),
-    ).length,
+    activeOrders: records.orders.filter((order) => !isClosedStatus(order.status)).length,
     urgentOrders: records.orders.filter(
       (order) =>
-        order.priority === OrderPriority.URGENT &&
-        ![OrderStatus.CANCELLED, OrderStatus.COMPLETED].includes(order.status),
+        order.priority === OrderPriority.URGENT && !isClosedStatus(order.status),
     ).length,
     carpenters: records.carpenters.length,
     clients: records.clients.length,
@@ -374,7 +380,7 @@ function buildDashboard(
       const activeOrders = records.orders.filter(
         (order) =>
           order.carpenter?.id === carpenter.id &&
-          ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(order.status),
+          !isClosedStatus(order.status),
       );
       const completedThisMonth = carpenter.orders.filter((order) => {
         if (order.status !== OrderStatus.COMPLETED) return false;
@@ -401,9 +407,7 @@ function buildDashboard(
       const relatedOrders = records.orders.filter(
         (order) => order.client?.id === client.id,
       );
-      const openOrders = relatedOrders.filter(
-        (order) => ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(order.status),
-      );
+      const openOrders = relatedOrders.filter((order) => !isClosedStatus(order.status));
       const lastOrderAt = relatedOrders
         .map((order) => order.createdAt)
         .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;

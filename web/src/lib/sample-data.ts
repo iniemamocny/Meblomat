@@ -1,4 +1,4 @@
-import { OrderPriority, OrderStatus, TaskStatus } from '@prisma/client';
+import { OrderPriority, OrderStatus, TaskStatus } from '@/lib/domain';
 
 type SampleWorkshop = {
   id: number;

@@ -1,4 +1,4 @@
-import { OrderPriority, OrderStatus } from '@prisma/client';
+import { OrderPriority, OrderStatus } from '@/lib/domain';
 
 type OrderStatusBadgeProps = {
   status: OrderStatus;

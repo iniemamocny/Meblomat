@@ -1,4 +1,4 @@
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/lib/domain';
 import { DashboardOrder, OrdersByStatus } from '@/server/dashboard';
 import { OrderPriorityBadge } from '@/components/order-status-pill';
 import { formatDateShort, formatRelativeDays } from '@/lib/format';
