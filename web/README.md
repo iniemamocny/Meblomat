@@ -57,6 +57,10 @@ Dashboard korzysta z Prisma i łączy się z bazą (np. Supabase Postgres). Po s
 npx prisma migrate deploy
 ```
 
+Polecenie działa zarówno z katalogu głównego repozytorium, jak i z `web/`,
+ponieważ konfiguracja `package.json` wskazuje na wspólny plik
+`../prisma/schema.prisma`.
+
 dane zaczną być pobierane bezpośrednio z bazy. Do momentu migracji panel prezentuje dane przykładowe.
 
 ## Kolejne kroki
