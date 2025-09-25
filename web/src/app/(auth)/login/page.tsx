@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 type LoginPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     redirect('/');
   }
 
-  const params = searchParams ?? {};
+  const params = (await searchParams) ?? {};
   const refParam = Array.isArray(params.ref) ? params.ref[0] : params.ref;
   const invitedParam = Array.isArray(params.invitedBy) ? params.invitedBy[0] : params.invitedBy;
   const invitedBy = refParam ?? invitedParam ?? null;
