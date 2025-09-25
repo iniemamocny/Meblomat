@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { CarpenterSubscriptionPlan, ClientSubscriptionPlan, UserRole } from '@/lib/domain';
 
 function generateAffiliateCode() {
@@ -7,7 +8,15 @@ function generateAffiliateCode() {
     return Array.from(buffer, (byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 
-  // Fallback for environments without Web Crypto (should not happen in Next.js runtimes)
+  try {
+    return randomBytes(4).toString('hex');
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Nie udało się wygenerować kodu afiliacyjnego z użyciem crypto.randomBytes.', error);
+    }
+  }
+
+  // Ostateczne zabezpieczenie – deterministyczne dla środowisk pozbawionych API crypto.
   return Math.random().toString(16).slice(2, 10).padEnd(8, '0');
 }
 
