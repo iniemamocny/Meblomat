@@ -30,8 +30,12 @@ backendową.
    npm install
    npm install --prefix web
    ```
-2. Skopiuj plik `.env.example` do `.env` i uzupełnij zmienną
-   `DATABASE_URL` adresem połączeniowym z Supabase.
+2. Skopiuj plik `.env.example` do `.env` i uzupełnij zmienne
+   środowiskowe (w tym `DATABASE_URL`) danymi z zakładki **Project
+   Settings → Database** w panelu Supabase.
+   > 🪟 Użytkownicy Windows: ustaw `DATABASE_URL` w PowerShellu
+   > poleceniem `setx DATABASE_URL "postgresql://..."` lub skorzystaj z
+   > WSL, aby uniknąć problemów z migracjami.
 3. Wygeneruj klienta Prisma i utwórz tabele:
    ```bash
    npx prisma generate
