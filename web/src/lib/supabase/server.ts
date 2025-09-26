@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import type { CookieOptions } from '@supabase/ssr';
 import { createServerClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
+import { SupabaseConfigError, requireSupabaseCredentials } from './config';
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
@@ -46,7 +46,15 @@ function isReadonlyRequestCookiesError(error: unknown): boolean {
 }
 
 export function createSupabaseServerClient(cookieStore: CookieStore): SupabaseClient {
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: createCookieAdapter(cookieStore),
-  });
+  try {
+    const { url, anonKey } = requireSupabaseCredentials();
+    return createServerClient(url, anonKey, {
+      cookies: createCookieAdapter(cookieStore),
+    });
+  } catch (error) {
+    throw new SupabaseConfigError(
+      `Nie udało się utworzyć klienta Supabase: ${(error as Error)?.message ?? 'nieznany błąd'}`,
+      { cause: error instanceof Error ? error : undefined },
+    );
+  }
 }

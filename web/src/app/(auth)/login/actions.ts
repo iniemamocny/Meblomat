@@ -4,6 +4,8 @@ import { randomBytes } from 'crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseConfigError } from '@/lib/supabase/config';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   CarpenterSubscriptionPlan,
@@ -17,6 +19,23 @@ type FormState = {
 };
 
 const INITIAL_STATE: FormState = { status: 'idle' };
+
+const SUPABASE_SETUP_MESSAGE =
+  'Skonfiguruj połączenie z Supabase, dodając NEXT_PUBLIC_SUPABASE_URL i NEXT_PUBLIC_SUPABASE_ANON_KEY w pliku .env.local.';
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
+
+function resolveSupabaseClient(cookieStore: CookieStore): SupabaseClient | null {
+  try {
+    return createSupabaseServerClient(cookieStore);
+  } catch (error) {
+    if (error instanceof SupabaseConfigError) {
+      console.error('Supabase configuration error during auth action:', error.message, error);
+      return null;
+    }
+    throw error;
+  }
+}
 
 function normalizeString(value: FormDataEntryValue | null): string {
   if (typeof value === 'string') {
@@ -57,7 +76,11 @@ export async function signInAction(_: FormState, formData: FormData): Promise<Fo
     }
 
     const cookieStore = await cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = resolveSupabaseClient(cookieStore);
+
+    if (!supabase) {
+      return { status: 'error', message: SUPABASE_SETUP_MESSAGE };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -106,7 +129,11 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     }
 
     const cookieStore = await cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = resolveSupabaseClient(cookieStore);
+
+    if (!supabase) {
+      return { status: 'error', message: SUPABASE_SETUP_MESSAGE };
+    }
 
     const metadata =
       role === UserRole.CARPENTER
@@ -162,8 +189,11 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
 
 export async function signOutAction() {
   const cookieStore = await cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
-  await supabase.auth.signOut();
+  const supabase = resolveSupabaseClient(cookieStore);
+
+  if (supabase) {
+    await supabase.auth.signOut();
+  }
   redirect('/login');
 }
 
