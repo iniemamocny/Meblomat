@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { INITIAL_STATE, signInAction, signUpAction } from './actions';
+import { signInAction, signUpAction } from './actions';
+import { INITIAL_STATE } from './state';
 import { ClientSubscriptionPlan, UserRole } from '@/lib/domain';
 
 type AuthFormsProps = {

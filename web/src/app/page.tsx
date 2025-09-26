@@ -12,14 +12,44 @@ import {
 } from '@/lib/domain';
 import { formatCurrency, formatDateShort, formatPhone, formatRelativeDays } from '@/lib/format';
 import { getSiteUrl } from '@/lib/supabase/config';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, SupabaseConfigError } from '@/lib/supabase/server';
 import { getDashboardData } from '@/server/dashboard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const cookieStore = await cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  let supabase;
+
+  try {
+    supabase = createSupabaseServerClient(cookieStore);
+  } catch (error) {
+    if (error instanceof SupabaseConfigError) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-slate-100">
+          <div className="w-full max-w-2xl rounded-3xl border border-red-500/30 bg-red-500/10 p-10 text-center shadow-2xl shadow-black/50">
+            <span className="inline-flex rounded-full border border-red-400/40 bg-red-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-red-200">
+              Konfiguracja Supabase wymagana
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold text-white">Panel wymaga połączenia z Supabase</h1>
+            <p className="mt-3 text-sm text-red-100/90">
+              Uzupełnij zmienne środowiskowe
+              <code className="mx-1 rounded bg-red-500/20 px-2 py-1 text-[0.85em]">NEXT_PUBLIC_SUPABASE_URL</code>
+              oraz
+              <code className="mx-1 rounded bg-red-500/20 px-2 py-1 text-[0.85em]">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
+              w konfiguracji projektu. Dopiero wtedy logowanie użytkowników i dostęp do panelu będą działać poprawnie.
+            </p>
+            <p className="mt-4 text-xs text-red-100/70">
+              Dodaj wartości w pliku
+              <code className="mx-1 rounded bg-red-500/20 px-2 py-1 text-[0.85em]">.env.local</code>
+              lub w zmiennych środowiskowych serwera, a następnie ponownie uruchom wdrożenie.
+            </p>
+          </div>
+        </main>
+      );
+    }
+    throw error;
+  }
   const {
     data: { session },
   } = await supabase.auth.getSession();

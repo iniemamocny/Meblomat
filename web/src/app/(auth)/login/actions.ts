@@ -4,19 +4,13 @@ import { randomBytes } from 'crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, SupabaseConfigError } from '@/lib/supabase/server';
 import {
   CarpenterSubscriptionPlan,
   ClientSubscriptionPlan,
   UserRole,
 } from '@/lib/domain';
-
-type FormState = {
-  status: 'idle' | 'error' | 'success';
-  message?: string;
-};
-
-const INITIAL_STATE: FormState = { status: 'idle' };
+import { INITIAL_STATE, type FormState } from './state';
 
 function normalizeString(value: FormDataEntryValue | null): string {
   if (typeof value === 'string') {
@@ -57,7 +51,15 @@ export async function signInAction(_: FormState, formData: FormData): Promise<Fo
     }
 
     const cookieStore = await cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = await resolveSupabaseClient(cookieStore);
+
+    if (!supabase) {
+      return {
+        status: 'error',
+        message:
+          'Logowanie jest obecnie niedostępne. Skonfiguruj połączenie z Supabase, aby kontynuować.',
+      };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -106,7 +108,15 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     }
 
     const cookieStore = await cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = await resolveSupabaseClient(cookieStore);
+
+    if (!supabase) {
+      return {
+        status: 'error',
+        message:
+          'Rejestracja jest obecnie niedostępna. Skonfiguruj połączenie z Supabase, aby utworzyć konto.',
+      };
+    }
 
     const metadata =
       role === UserRole.CARPENTER
@@ -162,9 +172,24 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
 
 export async function signOutAction() {
   const cookieStore = await cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
-  await supabase.auth.signOut();
+  const supabase = await resolveSupabaseClient(cookieStore);
+
+  if (supabase) {
+    await supabase.auth.signOut();
+  }
   redirect('/login');
 }
 
-export { INITIAL_STATE };
+type CookieStore = Parameters<typeof createSupabaseServerClient>[0];
+
+async function resolveSupabaseClient(cookieStore: CookieStore) {
+  try {
+    return createSupabaseServerClient(cookieStore);
+  } catch (error) {
+    if (error instanceof SupabaseConfigError) {
+      console.error('Supabase configuration missing:', error.message);
+      return null;
+    }
+    throw error;
+  }
+}
