@@ -58,3 +58,19 @@ export function createSupabaseServerClient(cookieStore: CookieStore): SupabaseCl
     );
   }
 }
+
+export function resolveSupabaseServerClient(cookieStore: CookieStore): {
+  client: SupabaseClient | null;
+  error: string | null;
+} {
+  try {
+    const client = createSupabaseServerClient(cookieStore);
+    return { client, error: null };
+  } catch (error) {
+    if (error instanceof SupabaseConfigError) {
+      console.warn('[Supabase] Pominięto inicjalizację klienta na serwerze:', error.message);
+      return { client: null, error: error.message };
+    }
+    throw error;
+  }
+}
