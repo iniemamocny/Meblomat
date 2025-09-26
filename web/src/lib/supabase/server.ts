@@ -12,12 +12,37 @@ function createCookieAdapter(cookieStore: CookieStore) {
       return cookieStore.get(name)?.value;
     },
     set(name: string, value: string, options: CookieOptions) {
-      cookieStore.set({ name, value, ...options });
+      try {
+        cookieStore.set({ name, value, ...options });
+      } catch (error) {
+        if (!isReadonlyRequestCookiesError(error)) {
+          throw error;
+        }
+      }
     },
     remove(name: string, options: CookieOptions) {
-      cookieStore.set({ name, value: '', ...options, expires: new Date(0) });
+      try {
+        cookieStore.set({
+          name,
+          value: '',
+          ...options,
+          expires: new Date(0),
+        });
+      } catch (error) {
+        if (!isReadonlyRequestCookiesError(error)) {
+          throw error;
+        }
+      }
     },
   };
+}
+
+function isReadonlyRequestCookiesError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'ReadonlyRequestCookiesError' ||
+      error.message.includes('ReadonlyRequestCookiesError'))
+  );
 }
 
 export function createSupabaseServerClient(cookieStore: CookieStore): SupabaseClient {
