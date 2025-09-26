@@ -48,6 +48,10 @@ przykładowe. Po wykonaniu migracji i uzupełnieniu tabel wystarczy
 odświeżyć stronę – dashboard automatycznie przełączy się na dane
 produkcyjne.
 
+> 💡 Jeśli klonujesz repozytorium po raz pierwszy na Windowsie,
+> rozważ uruchomienie polecenia `git config core.autocrlf false`, aby
+> uniknąć ponownej konwersji końcówek linii w plikach.
+
 ## Model danych
 
 | Model       | Kluczowe pola                              | Opis                                                 |
