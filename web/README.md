@@ -19,6 +19,8 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 Po zmianie wartości uruchom `npm install` w katalogu `web/`, aby zainstalować zależności Supabase.
 
+> **Uwaga:** podczas wdrożeń na Vercelu ustaw zmienną `NEXT_PUBLIC_SITE_URL` na publiczny adres swojej aplikacji (np. `https://twoja-domena.vercel.app`). Supabase wykorzystuje tę wartość do generowania linków logowania, dlatego nieprawidłowy URL spowoduje, że użytkownik otrzyma błędny adres w wiadomości e-mail.
+
 ## Uruchamianie projektu
 
 ```bash
