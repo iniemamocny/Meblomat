@@ -8,7 +8,7 @@ import {
   signInWithGoogleAction,
   signUpAction,
 } from './actions';
-import { ClientSubscriptionPlan, UserRole } from '@/lib/domain';
+import { UserRole } from '@/lib/domain';
 
 type AuthFormsProps = {
   invitedBy?: string | null;
@@ -209,27 +209,9 @@ export function AuthForms({ invitedBy }: AuthFormsProps) {
                 <p className="mt-2 text-xs text-slate-300">
                   Darmowe konto do wysyłania zapytań ofertowych do maksymalnie 2 stolarzy.
                 </p>
-                <div className="mt-4 space-y-2 rounded-xl bg-slate-900/60 p-3">
-                  <label className="flex items-center justify-between text-xs text-slate-200">
-                    <span>Plan standardowy</span>
-                    <input
-                      type="radio"
-                      name="clientPlan"
-                      value={ClientSubscriptionPlan.FREE}
-                      defaultChecked
-                      className="h-3 w-3"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between text-xs text-slate-200">
-                    <span>Plan premium (nielimitowane zapytania)</span>
-                    <input
-                      type="radio"
-                      name="clientPlan"
-                      value={ClientSubscriptionPlan.PREMIUM}
-                      className="h-3 w-3"
-                    />
-                  </label>
-                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Po utworzeniu konta możesz przejść na plan Pro, aby znieść limit zapytań.
+                </p>
               </label>
             </div>
           </div>
