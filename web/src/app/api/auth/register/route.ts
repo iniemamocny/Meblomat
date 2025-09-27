@@ -37,47 +37,48 @@ export async function POST(request: Request) {
   const { email, password, accountType } = payload ?? {};
   const errors: FieldErrors = {};
 
+  let normalizedEmail: string | undefined;
   if (typeof email !== 'string') {
     errors.email = 'Podaj adres e-mail.';
+  } else {
+    const candidateEmail = email.trim().toLowerCase();
+    if (!candidateEmail) {
+      errors.email = 'Podaj adres e-mail.';
+    } else if (!EMAIL_REGEX.test(candidateEmail)) {
+      errors.email = 'Podaj prawidłowy adres e-mail.';
+    } else {
+      normalizedEmail = candidateEmail;
+    }
   }
 
+  let passwordValue: string | undefined;
   if (typeof password !== 'string') {
     errors.password = 'Ustaw hasło.';
-  }
-
-  if (typeof accountType !== 'string') {
-    errors.accountType = 'Wybierz typ konta.';
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return NextResponse.json({ errors }, { status: 400 });
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const normalizedAccountType = accountType.trim().toLowerCase();
-
-  if (!normalizedEmail) {
-    errors.email = 'Podaj adres e-mail.';
-  } else if (!EMAIL_REGEX.test(normalizedEmail)) {
-    errors.email = 'Podaj prawidłowy adres e-mail.';
-  }
-
-  if (!password) {
+  } else if (!password) {
     errors.password = 'Ustaw hasło.';
   } else if (password.length < 8) {
     errors.password = 'Hasło powinno mieć co najmniej 8 znaków.';
+  } else {
+    passwordValue = password;
+  }
+
+  let normalizedAccountType: 'carpenter' | 'client' | undefined;
+  if (typeof accountType !== 'string') {
+    errors.accountType = 'Wybierz typ konta.';
+  } else {
+    const candidateAccountType = accountType.trim().toLowerCase();
+    if (candidateAccountType === 'carpenter' || candidateAccountType === 'client') {
+      normalizedAccountType = candidateAccountType;
+    } else {
+      errors.accountType = 'Wybierz typ konta.';
+    }
+  }
+
+  if (Object.keys(errors).length > 0 || !normalizedEmail || !passwordValue || !normalizedAccountType) {
+    return NextResponse.json({ errors }, { status: 400 });
   }
 
   const isCarpenterAccount = normalizedAccountType === 'carpenter';
-  const isClientAccount = normalizedAccountType === 'client';
-
-  if (!isCarpenterAccount && !isClientAccount) {
-    errors.accountType = 'Wybierz typ konta.';
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return NextResponse.json({ errors }, { status: 400 });
-  }
 
   const existingUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(passwordValue);
     const trialStartedAt = isCarpenterAccount ? new Date() : null;
     const trialEndsAt = isCarpenterAccount
       ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
