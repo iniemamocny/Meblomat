@@ -4,7 +4,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Meblomat – Panel warsztatu stolarskiego',
   description:
-    'Panel startowy dla warsztatu stolarskiego: zlecenia, klienci i zespół w jednym miejscu. Gotowe do integracji z Supabase.',
+    'Panel startowy dla warsztatu stolarskiego: zlecenia, klienci i zespół w jednym miejscu. Działa bez logowania – wystarczy połączenie Prisma z bazą.',
 };
 
 export default function RootLayout({

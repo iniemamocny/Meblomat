@@ -56,7 +56,7 @@ export function DatabaseStatusCard({ state }: DatabaseStatusCardProps) {
         {state.source === 'sample' && (
           <p>
             Ten widok korzysta z danych przykładowych. Po migracji bazy odśwież
-            stronę, aby zobaczyć informacje z Supabase.
+            stronę, aby zobaczyć informacje z Twojej bazy danych.
           </p>
         )}
       </footer>

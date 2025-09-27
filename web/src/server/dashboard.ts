@@ -132,7 +132,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     return buildDashboard(data, {
       status: 'connected',
       label: 'Połączono z bazą danych',
-      details: 'Dane pobrano bezpośrednio z Supabase/Prisma.',
+      details: 'Dane pobrano bezpośrednio z Twojej bazy danych przez Prisma.',
       source: 'database',
     });
   } catch (error) {

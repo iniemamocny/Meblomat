@@ -1,45 +1,14 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { DatabaseStatusCard } from '@/components/database-status-card';
 import { CopyField } from '@/components/copy-field';
 import { OrderPriorityBadge, OrderStatusBadge } from '@/components/order-status-pill';
 import { OrdersPipeline } from '@/components/orders-pipeline';
-import { SignOutButton } from '@/components/sign-out-button';
-import { SupabaseConfigMissing } from '@/components/supabase-config-missing';
-import {
-  ClientSubscriptionPlan,
-  UserRole,
-} from '@/lib/domain';
 import { formatCurrency, formatDateShort, formatPhone, formatRelativeDays } from '@/lib/format';
-import { getSiteUrl } from '@/lib/supabase/config';
-import { resolveSupabaseServerClient } from '@/lib/supabase/server';
 import { getDashboardData } from '@/server/dashboard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const { client: supabase, error: supabaseError } = resolveSupabaseServerClient(cookieStore);
-
-  if (!supabase) {
-    return <SupabaseConfigMissing message={supabaseError} />;
-  }
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    redirect('/login');
-  }
-
-  const metadata = (session.user.user_metadata ?? {}) as Record<string, unknown>;
-  const userRole = (metadata.role as string) ?? UserRole.CLIENT;
-  const subscriptionPlan = metadata.subscriptionPlan as string | undefined;
-  const projectLimit = typeof metadata.projectLimit === 'number' ? metadata.projectLimit : null;
-  const affiliateCode = typeof metadata.affiliateCode === 'string' ? metadata.affiliateCode : null;
-  const invitedBy = typeof metadata.invitedBy === 'string' ? metadata.invitedBy : null;
-
   const dashboard = await getDashboardData();
   const stats = [
     {
@@ -68,35 +37,7 @@ export default async function Home() {
   const topCarpenters = dashboard.carpenters.slice(0, 4);
   const topClients = dashboard.clients.slice(0, 6);
 
-  const siteUrl = getSiteUrl().replace(/\/$/, '');
-  const affiliateReference = affiliateCode ?? session.user.id;
-  const affiliateLink = `${siteUrl}/login?ref=${encodeURIComponent(affiliateReference)}`;
-
-  const roleLabel =
-    userRole === UserRole.ADMIN
-      ? 'Administrator'
-      : userRole === UserRole.CARPENTER
-        ? 'Stolarz'
-        : 'Klient';
-
-  let planLabel = 'Pełny dostęp';
-  if (userRole === UserRole.CARPENTER) {
-    planLabel = 'Subskrypcja warsztatu';
-  } else if (userRole === UserRole.CLIENT) {
-    planLabel =
-      subscriptionPlan === ClientSubscriptionPlan.PREMIUM
-        ? 'Klient premium'
-        : 'Klient standardowy';
-  }
-
-  const remainingRequestsLabel =
-    userRole === UserRole.CLIENT
-      ? subscriptionPlan === ClientSubscriptionPlan.PREMIUM
-        ? 'Brak limitów wysyłki projektów.'
-        : projectLimit !== null
-          ? `Możesz wysłać projekty do ${projectLimit} stolarzy jednocześnie.`
-          : 'Możesz wysłać projekty do 2 stolarzy jednocześnie.'
-      : null;
+  const apiExampleCommand = 'curl http://localhost:3000/api/orders';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -110,26 +51,25 @@ export default async function Home() {
               Panel warsztatu stolarskiego
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-300">
-              Monitoruj realizację zamówień, dostępność zespołu i relacje z klientami. Gotowe do
-              podpięcia pod Supabase.
+              Monitoruj realizację zamówień, dostępność zespołu i relacje z klientami. Dashboard działa od razu — bez logowania,
+              na danych z Prisma albo wbudowanego zestawu demonstracyjnego.
             </p>
-            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 shadow shadow-black/30 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Zalogowany użytkownik</p>
-                <p className="mt-1 text-base font-semibold text-white">{session.user.email}</p>
-                <p className="mt-1 text-xs text-slate-300">
-                  Rola: {roleLabel} · Plan: {planLabel}
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 shadow shadow-black/30 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Tryb demonstracyjny</p>
+                <p className="text-base font-semibold text-white">Dostęp bez logowania</p>
+                <p className="text-xs text-slate-300">
+                  Interfejs ładuje się automatycznie na podstawie danych z Twojej bazy danych (Prisma). Jeśli połączenie jest
+                  niedostępne, widok korzysta z przykładowych rekordów, aby łatwiej projektować doświadczenie użytkownika.
                 </p>
-                {invitedBy && userRole === UserRole.CLIENT ? (
-                  <p className="mt-1 text-xs text-emerald-200">
-                    Połączony ze stolarzem ID: {invitedBy}
-                  </p>
-                ) : null}
-                {remainingRequestsLabel ? (
-                  <p className="mt-2 text-xs text-slate-200">{remainingRequestsLabel}</p>
-                ) : null}
               </div>
-              <SignOutButton />
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4 sm:max-w-xs">
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Wypróbuj API</p>
+                <div className="mt-3">
+                  <CopyField label="Skopiuj" value={apiExampleCommand} />
+                </div>
+                <p className="mt-3 text-[11px] uppercase tracking-[0.3em] text-slate-400">GET /api/orders</p>
+              </div>
             </div>
           </div>
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100 shadow shadow-emerald-500/20">
@@ -144,53 +84,6 @@ export default async function Home() {
 
       <main className="mx-auto max-w-6xl space-y-12 px-6 py-12">
         <DatabaseStatusCard state={dashboard.connection} />
-
-        {userRole === UserRole.CARPENTER ? (
-          <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <div className="rounded-2xl border border-white/10 bg-emerald-500/5 p-6 shadow shadow-emerald-500/10">
-              <h2 className="text-lg font-semibold text-white">Twój link afiliacyjny</h2>
-              <p className="mt-2 text-sm text-slate-200">
-                Udostępnij ten link klientom na stronie internetowej lub w social mediach. Każda osoba, która zarejestruje się przez link,
-                zostanie przypisana do Twojego warsztatu i zobaczy Twoje oferty w panelu klienta.
-              </p>
-              <div className="mt-4">
-                <CopyField label="Kopiuj" value={affiliateLink} />
-              </div>
-              <p className="mt-3 text-xs text-slate-300">
-                Kod afiliacyjny jest generowany automatycznie w metadanych użytkownika Supabase i można go zmienić w razie potrzeby w konsoli.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow shadow-black/30">
-              <h3 className="text-base font-semibold text-white">Zaproszenia e-mail</h3>
-              <p className="mt-2 text-sm text-slate-300">
-                Wysyłaj spersonalizowane zaproszenia klientom bezpośrednio z panelu po skonfigurowaniu funkcji serwerowej z kluczem
-                <code className="mx-1 rounded bg-slate-950/80 px-1">SUPABASE_SERVICE_ROLE_KEY</code>.
-              </p>
-              <p className="mt-3 text-xs text-slate-400">
-                Dodaj integrację z dostawcą e-mail (np. Resend) i użyj Supabase Admin API, aby automatycznie tworzyć konta klientów i wysyłać im link do
-                rejestracji.
-              </p>
-            </div>
-          </section>
-        ) : null}
-
-        {userRole === UserRole.CLIENT ? (
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow shadow-black/30">
-            <h2 className="text-lg font-semibold text-white">Twój plan klienta</h2>
-            <p className="mt-2 text-sm text-slate-300">
-              {remainingRequestsLabel ?? 'Możesz wysyłać zapytania do stolarzy bez ograniczeń.'}
-            </p>
-            {subscriptionPlan !== ClientSubscriptionPlan.PREMIUM ? (
-              <p className="mt-3 text-xs text-slate-400">
-                Potrzebujesz więcej wysyłek? Wykup konto premium w zakładce płatności (do implementacji) lub skontaktuj się bezpośrednio ze swoim stolarzem.
-              </p>
-            ) : (
-              <p className="mt-3 text-xs text-emerald-200">
-                Konto premium aktywne – wszystkie funkcje klienta odblokowane.
-              </p>
-            )}
-          </section>
-        ) : null}
 
         <section className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -391,7 +284,10 @@ export default async function Home() {
               Uzupełnij zmienną <code className="rounded bg-slate-950/60 px-1 py-0.5 text-xs">DATABASE_URL</code> w pliku
               <code className="ml-1 rounded bg-slate-950/60 px-1 py-0.5 text-xs">.env</code> i uruchom migracje Prisma.
             </li>
-            <li>W Supabase dodaj dane startowe przez edytor SQL lub import pliku .sql.</li>
+            <li>
+              Dodaj dane startowe do tabel – skorzystaj z Prisma Studio, importu SQL (np. z pliku
+              <code className="ml-1 rounded bg-slate-950/60 px-1 py-0.5 text-xs">prisma/sql/20250926_init.sql</code>) lub własnego skryptu seed.
+            </li>
             <li>
               Rozszerz folder <code className="rounded bg-slate-950/60 px-1 py-0.5 text-xs">web/src/app/api</code> o endpointy POST, aby tworzyć nowe
               zlecenia prosto z panelu.
@@ -407,8 +303,8 @@ export default async function Home() {
             <Link href="https://www.prisma.io" target="_blank" className="hover:text-emerald-200">
               Prisma
             </Link>
-            <Link href="https://supabase.com" target="_blank" className="hover:text-emerald-200">
-              Supabase
+            <Link href="https://nextjs.org" target="_blank" className="hover:text-emerald-200">
+              Next.js
             </Link>
             <Link href="https://vercel.com" target="_blank" className="hover:text-emerald-200">
               Vercel
