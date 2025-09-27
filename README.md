@@ -10,14 +10,15 @@ warstwą backendową.
 ## Co jest w pakiecie?
 
 - **Dashboard Next.js** – aplikacja w katalogu `web/` z gotowym ekranem
-  startowym prezentującym zlecenia, klientów i zespół. W trybie braku
-  bazy aplikacja korzysta z danych przykładowych, aby UI pozostał w pełni
-  funkcjonalny.
+  startowym prezentującym zlecenia, klientów i zespół. Interfejs wymaga
+  zalogowania i obsługuje sesje HTTP-only.
 - **Prisma schema** – rozbudowany model domeny (`prisma/schema.prisma`)
-  z tabelami `Workshop`, `Carpenter`, `Client`, `Order`, `OrderTask` i
-  `OrderNote` oraz enumami `OrderStatus`, `OrderPriority`, `TaskStatus`.
-- **API Next.js** – endpointy `/api/health` oraz `/api/orders` używane do
-  monitorowania stanu połączenia i pobierania listy zleceń.
+  z tabelami `Workshop`, `Carpenter`, `Client`, `Order`, `OrderTask`,
+  `OrderNote`, `User` i `Session` oraz enumami `OrderStatus`,
+  `OrderPriority`, `TaskStatus`, `UserRole`.
+- **API Next.js** – endpointy `/api/health`, `/api/orders`,
+  `/api/auth/login` oraz `/api/auth/logout` używane do monitorowania stanu
+  połączenia, uwierzytelniania i pobierania listy zleceń.
 - **Skrypty pomocnicze** – `npm run db:check` testuje połączenie z bazą,
   a `prisma/migrate.sh` uruchamia migracje w sposób przyjazny dla CI/CD.
 - **Konfiguracja deploymentu** – Dockerfile w `docker/` oraz (do
@@ -31,8 +32,10 @@ warstwą backendową.
    npm install --prefix web
    ```
 2. Skopiuj plik `.env.example` do `.env` i uzupełnij zmienne
-   środowiskowe (w tym `DATABASE_URL`) adresem swojej bazy PostgreSQL
-   (np. `postgresql://user:password@host:5432/dbname`).
+   środowiskowe: `DATABASE_URL`, `AUTH_SESSION_COOKIE_NAME`,
+   `AUTH_SESSION_TTL_MINUTES` oraz `AUTH_SESSION_COOKIE_SECURE`.
+   Adres powinien wskazywać na Twoją bazę PostgreSQL (np.
+   `postgresql://user:password@host:5432/dbname`).
    > 🪟 Użytkownicy Windows: ustaw `DATABASE_URL` w PowerShellu
    > poleceniem `setx DATABASE_URL "postgresql://..."` lub skorzystaj z
    > WSL, aby uniknąć problemów z migracjami.
@@ -48,16 +51,22 @@ warstwą backendową.
    Domyślnie zachowuje standardowe uprawnienia PostgreSQL (bez dodatkowych ról Supabase), więc w razie potrzeby nadaj dostęp użytkownikom ręcznie.
 
 
-4. Uruchom lokalnie dashboard (w katalogu `web/`):
+4. Utwórz konto administratora (wymagane do logowania):
+   ```bash
+   npx ts-node scripts/create-admin.ts admin@example.com SuperTajneHaslo
+   ```
+   Polecenie tworzy (lub aktualizuje) użytkownika z rolą `admin` i ustawia nowe hasło.
+
+5. Uruchom lokalnie dashboard (w katalogu `web/`):
    ```bash
    npm run dev
    ```
    Interfejs będzie dostępny pod adresem `http://localhost:3000`.
 
-Na tym etapie, jeśli baza nie ma jeszcze tabel, w panelu zobaczysz dane
-przykładowe. Po wykonaniu migracji i uzupełnieniu tabel wystarczy
-odświeżyć stronę – dashboard automatycznie przełączy się na dane
-produkcyjne.
+Po wykonaniu migracji i utworzeniu kont użytkowników interfejs wymaga
+zalogowania. Jeśli baza nie ma jeszcze tabel, moduł dashboardu nadal może
+wyświetlić dane przykładowe (dla celów projektowych), ale endpointy API
+zwracają komunikaty o brakujących migracjach.
 
 > 💡 Jeśli klonujesz repozytorium po raz pierwszy na Windowsie,
 > rozważ uruchomienie polecenia `git config core.autocrlf false`, aby
@@ -73,6 +82,8 @@ produkcyjne.
 | `Order`     | `reference`, `status`, `priority`, `budgetCents`, `dueDate` | Zamówienia wraz z priorytetem, terminami i przypisaniami. |
 | `OrderTask` | `title`, `status`, `assigneeId`, `dueDate` | Zadania składające się na zamówienie (checklista).   |
 | `OrderNote` | `author`, `message`                        | Notatki wewnętrzne do zlecenia.                      |
+| `User`      | `email`, `passwordHash`, `roles[]`         | Konta użytkowników z opcjonalnym powiązaniem z klientem/stolarzem. |
+| `Session`   | `token`, `userId`, `expiresAt`             | Sesje HTTP-only, kasowane po wylogowaniu lub wygaśnięciu. |
 
 Enumy:
 
@@ -80,13 +91,16 @@ Enumy:
   `COMPLETED`, `CANCELLED`
 - `OrderPriority` – `LOW`, `MEDIUM`, `HIGH`, `URGENT`
 - `TaskStatus` – `PENDING`, `IN_PROGRESS`, `COMPLETED`, `BLOCKED`
+- `UserRole` – `admin`, `carpenter`, `client`
 
 ## Endpointy API (Next.js)
 
 | Endpoint        | Opis                                                         |
 |-----------------|--------------------------------------------------------------|
 | `GET /api/health` | Zwraca status połączenia z bazą (`ok`, `unreachable`, `error`). |
-| `GET /api/orders` | Lista zleceń z relacjami. W przypadku braku tabel zwraca dane przykładowe. |
+| `GET /api/orders` | Lista zleceń z relacjami. Wymaga aktywnej sesji; przy braku migracji zwraca komunikat o błędzie. |
+| `POST /api/auth/login` | Uwierzytelnienie użytkownika, zapis sesji i ustawienie ciasteczka HTTP-only. |
+| `POST /api/auth/logout` | Usuwa sesję i czyści ciasteczko. |
 
 Kolejne kroki to dodanie metod `POST/PUT/DELETE`, które pozwolą
 zarządzać zleceniami z poziomu panelu.
@@ -157,7 +171,7 @@ Run, gdy projekt będzie gotowy do wdrożeń.
 ```
 .
 ├── prisma/            # Schema, klient Prisma i skrypt migracyjny
-├── scripts/           # check-db.ts (test połączenia z bazą)
+├── scripts/           # check-db.ts, create-admin.ts (narzędzia CLI)
 ├── web/               # Aplikacja Next.js (dashboard)
 │   ├── src/app/       # Strony, endpointy API i style globalne
 │   ├── src/components # Komponenty UI (statusy, pipeline zleceń)
@@ -170,7 +184,7 @@ Run, gdy projekt będzie gotowy do wdrożeń.
 ## Następne kroki
 
 1. Zaimplementuj endpointy `POST`/`PATCH` dla zamówień oraz notatek.
-2. Dodaj autoryzację (np. Clerk, Auth0 lub własny moduł oAuth/OpenID).
+2. Rozbuduj obsługę ról (np. zróżnicowane uprawnienia `admin`/`carpenter`/`client`).
 3. Rozbuduj pipeline CI/CD i monitoruj logi po wdrożeniu na produkcję.
 
 Powodzenia w dalszym rozwijaniu Meblomatu! Jeśli potrzebujesz kolejnych

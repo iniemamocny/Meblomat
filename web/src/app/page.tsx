@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { DatabaseStatusCard } from '@/components/database-status-card';
 import { CopyField } from '@/components/copy-field';
+import { LogoutButton } from '@/components/logout-button';
 import { OrderPriorityBadge, OrderStatusBadge } from '@/components/order-status-pill';
 import { OrdersPipeline } from '@/components/orders-pipeline';
 import { formatCurrency, formatDateShort, formatPhone, formatRelativeDays } from '@/lib/format';
@@ -8,8 +9,19 @@ import { getDashboardData } from '@/server/dashboard';
 
 export const dynamic = 'force-dynamic';
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrator',
+  carpenter: 'Stolarz',
+  client: 'Klient',
+};
+
 export default async function Home() {
   const dashboard = await getDashboardData();
+  const { viewer } = dashboard;
+  const sessionCookieName = process.env.AUTH_SESSION_COOKIE_NAME ?? 'meblomat_session';
+  const readableRoles = viewer.roles.length
+    ? viewer.roles.map((role) => ROLE_LABELS[role] ?? role).join(', ')
+    : 'Brak przypisanych ról';
   const stats = [
     {
       label: 'Aktywne zlecenia',
@@ -37,7 +49,7 @@ export default async function Home() {
   const topCarpenters = dashboard.carpenters.slice(0, 4);
   const topClients = dashboard.clients.slice(0, 6);
 
-  const apiExampleCommand = 'curl http://localhost:3000/api/orders';
+  const apiExampleCommand = `curl --cookie "${sessionCookieName}=..." http://localhost:3000/api/orders`;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -51,30 +63,30 @@ export default async function Home() {
               Panel warsztatu stolarskiego
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-300">
-              Monitoruj realizację zamówień, dostępność zespołu i relacje z klientami. Dashboard działa od razu — bez logowania,
-              na danych z Prisma albo wbudowanego zestawu demonstracyjnego.
+              Monitoruj realizację zamówień, dostępność zespołu i relacje z klientami. Ten widok jest chroniony sesją – aby go
+              zobaczyć, zaloguj się kontem administratora lub członka zespołu.
             </p>
             <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 shadow shadow-black/30 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Tryb demonstracyjny</p>
-                <p className="text-base font-semibold text-white">Dostęp bez logowania</p>
-                <p className="text-xs text-slate-300">
-                  Interfejs ładuje się automatycznie na podstawie danych z Twojej bazy danych (Prisma). Jeśli połączenie jest
-                  niedostępne, widok korzysta z przykładowych rekordów, aby łatwiej projektować doświadczenie użytkownika.
-                </p>
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Aktualny użytkownik</p>
+                <p className="text-base font-semibold text-white">{viewer.email}</p>
+                <p className="text-xs text-slate-300">Role: {readableRoles}</p>
+                <LogoutButton className="pt-2" />
               </div>
               <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4 sm:max-w-xs">
                 <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Wypróbuj API</p>
                 <div className="mt-3">
                   <CopyField label="Skopiuj" value={apiExampleCommand} />
                 </div>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.3em] text-slate-400">GET /api/orders</p>
+                <p className="mt-3 text-[11px] uppercase tracking-[0.3em] text-slate-400">
+                  GET /api/orders (wymaga ciasteczka sesji)
+                </p>
               </div>
             </div>
           </div>
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100 shadow shadow-emerald-500/20">
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-200">Następny krok</p>
-            <p className="mt-2 font-medium">Uruchom migracje Prisma, aby utworzyć tabele.</p>
+            <p className="mt-2 font-medium">Utrzymuj migracje Prisma i konta użytkowników w aktualnym stanie.</p>
             <code className="mt-3 inline-flex items-center rounded-lg border border-emerald-400/40 bg-slate-950/60 px-3 py-2 text-xs text-emerald-100">
               npx prisma migrate deploy
             </code>

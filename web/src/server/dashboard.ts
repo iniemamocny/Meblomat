@@ -1,4 +1,4 @@
-import prisma from '@meblomat/prisma';
+import { prisma } from '@meblomat/prisma';
 import { OrderPriority, OrderStatus, TaskStatus } from '@/lib/domain';
 import { createSampleRecords } from '@/lib/sample-data';
 import {
@@ -6,6 +6,11 @@ import {
   isMissingTableError,
   isPrismaConnectionError,
 } from '@/lib/prisma-errors';
+import {
+  AuthenticatedUser,
+  isUnauthorizedError,
+  requireCurrentUser,
+} from '@/server/auth';
 
 type RawOrder = {
   id: number;
@@ -112,6 +117,7 @@ export type DashboardConnectionState = {
 };
 
 export type DashboardData = {
+  viewer: AuthenticatedUser;
   connection: DashboardConnectionState;
   counts: {
     orders: number;
@@ -126,19 +132,28 @@ export type DashboardData = {
   clients: DashboardClient[];
 };
 
+type DashboardSnapshot = Omit<DashboardData, 'viewer'>;
+
 export async function getDashboardData(): Promise<DashboardData> {
+  const viewer = await requireCurrentUser();
+
   try {
     const data = await fetchRecordsFromDatabase();
-    return buildDashboard(data, {
+    const snapshot = buildDashboard(data, {
       status: 'connected',
       label: 'Połączono z bazą danych',
       details: 'Dane pobrano bezpośrednio z Twojej bazy danych przez Prisma.',
       source: 'database',
     });
+    return { viewer, ...snapshot };
   } catch (error) {
+    if (isUnauthorizedError(error)) {
+      throw error;
+    }
+
     if (isMissingTableError(error)) {
       const sample = createSampleDataset();
-      return buildDashboard(sample, {
+      const snapshot = buildDashboard(sample, {
         status: 'schema-missing',
         label: 'Połączono, ale w bazie brak tabel Prisma',
         details:
@@ -146,11 +161,12 @@ export async function getDashboardData(): Promise<DashboardData> {
         source: 'sample',
         errorCode: error.code,
       });
+      return { viewer, ...snapshot };
     }
 
     if (isPrismaConnectionError(error)) {
       const sample = createSampleDataset();
-      return buildDashboard(sample, {
+      const snapshot = buildDashboard(sample, {
         status: 'error',
         label: 'Nie udało się połączyć z bazą danych',
         details:
@@ -158,17 +174,19 @@ export async function getDashboardData(): Promise<DashboardData> {
         source: 'sample',
         errorCode: 'connection',
       });
+      return { viewer, ...snapshot };
     }
 
     console.error('Failed to load dashboard data', error);
     const sample = createSampleDataset();
-    return buildDashboard(sample, {
+    const snapshot = buildDashboard(sample, {
       status: 'error',
       label: 'Wystąpił nieoczekiwany błąd Prisma',
       details: extractPrismaErrorMessage(error),
       source: 'sample',
       errorCode: 'unknown',
     });
+    return { viewer, ...snapshot };
   }
 }
 
@@ -346,7 +364,7 @@ function createSampleDataset(): RawRecords {
 function buildDashboard(
   records: RawRecords,
   connection: DashboardConnectionState,
-): DashboardData {
+): DashboardSnapshot {
   const ordersByStatus = initialiseStatusBuckets();
   const upcoming: DashboardOrder[] = [];
 

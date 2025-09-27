@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@meblomat/prisma';
+import { prisma } from '@meblomat/prisma';
 import { extractPrismaErrorMessage, isPrismaConnectionError } from '@/lib/prisma-errors';
 
 export const runtime = 'nodejs';
