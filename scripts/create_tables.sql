@@ -67,6 +67,22 @@ ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'IN_PROGRESS';
 ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'COMPLETED';
 ALTER TYPE public.taskstatus ADD VALUE IF NOT EXISTS 'BLOCKED';
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN
+    CREATE TYPE public.userrole AS ENUM (
+      'admin',
+      'carpenter',
+      'client'
+    );
+  END IF;
+END
+$$;
+
+ALTER TYPE public.userrole ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE public.userrole ADD VALUE IF NOT EXISTS 'carpenter';
+ALTER TYPE public.userrole ADD VALUE IF NOT EXISTS 'client';
+
 -- Helper function to keep the updated_at columns in sync.
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER
@@ -140,6 +156,48 @@ DROP TRIGGER IF EXISTS trg_clients_updated_at ON public.clients;
 CREATE TRIGGER trg_clients_updated_at
 BEFORE UPDATE ON public.clients
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Users table.
+CREATE TABLE IF NOT EXISTS public.users (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  roles public.userrole[] NOT NULL DEFAULT ARRAY[]::public.userrole[],
+  carpenter_id INTEGER UNIQUE,
+  client_id INTEGER UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT fk_users_carpenter
+    FOREIGN KEY (carpenter_id)
+    REFERENCES public.carpenters (id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_users_client
+    FOREIGN KEY (client_id)
+    REFERENCES public.clients (id)
+    ON DELETE SET NULL
+);
+
+DROP TRIGGER IF EXISTS trg_users_updated_at ON public.users;
+
+CREATE TRIGGER trg_users_updated_at
+BEFORE UPDATE ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Sessions table.
+CREATE TABLE IF NOT EXISTS public.sessions (
+  id SERIAL PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  user_id INTEGER NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT fk_sessions_user
+    FOREIGN KEY (user_id)
+    REFERENCES public.users (id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON public.sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON public.sessions (expires_at);
 
 -- Orders table.
 CREATE TABLE IF NOT EXISTS public.orders (

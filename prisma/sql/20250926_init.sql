@@ -81,6 +81,32 @@ BEGIN
 END
 $$;
 
+-- CreateEnum
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'UserRole'
+          AND n.nspname = current_schema()
+    ) THEN
+        EXECUTE 'CREATE TYPE "UserRole" AS ENUM (''admin'', ''carpenter'', ''client'')';
+    END IF;
+END
+$$;
+
+DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['admin', 'carpenter', 'client'];
+BEGIN
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
+END
+$$;
+
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Workshop" (
     "id" SERIAL NOT NULL,
@@ -168,6 +194,31 @@ CREATE TABLE IF NOT EXISTS "OrderNote" (
     CONSTRAINT "OrderNote_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "User" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "roles" "UserRole"[] NOT NULL DEFAULT ARRAY[]::"UserRole"[],
+    "carpenterId" INTEGER,
+    "clientId" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "Session" (
+    "id" SERIAL NOT NULL,
+    "token" TEXT NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "Carpenter_email_key" ON "Carpenter"("email");
 
@@ -194,6 +245,24 @@ CREATE INDEX IF NOT EXISTS "Order_clientId_idx" ON "Order"("clientId");
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "OrderTask_orderId_status_idx" ON "OrderTask"("orderId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "User_carpenterId_key" ON "User"("carpenterId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "User_clientId_key" ON "User"("clientId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "Session_token_key" ON "Session"("token");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "Session_userId_idx" ON "Session"("userId");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "Session_expiresAt_idx" ON "Session"("expiresAt");
 
 -- Ensure default for order reference to maintain UUID auto-generation
 ALTER TABLE "Order"
@@ -307,6 +376,54 @@ BEGIN
           AND constraint_name = 'OrderNote_orderId_fkey'
     ) THEN
         ALTER TABLE "OrderNote" ADD CONSTRAINT "OrderNote_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END
+$$;
+
+-- AddForeignKey
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'User'
+          AND constraint_name = 'User_carpenterId_fkey'
+    ) THEN
+        ALTER TABLE "User" ADD CONSTRAINT "User_carpenterId_fkey" FOREIGN KEY ("carpenterId") REFERENCES "Carpenter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
+
+-- AddForeignKey
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'User'
+          AND constraint_name = 'User_clientId_fkey'
+    ) THEN
+        ALTER TABLE "User" ADD CONSTRAINT "User_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
+
+-- AddForeignKey
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'Session'
+          AND constraint_name = 'Session_userId_fkey'
+    ) THEN
+        ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
     END IF;
 END
 $$;
