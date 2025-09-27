@@ -117,6 +117,11 @@ model User {
   email         String      @unique
   passwordHash  String
   roles         UserRole[]  @default([])
+  accountType        AccountType       @default(CLIENT)
+  subscriptionPlan   SubscriptionPlan?
+  subscriptionStatus SubscriptionStatus?
+  trialStartedAt     DateTime?
+  trialEndsAt        DateTime?
   carpenter     Carpenter?  @relation("CarpenterAccount", fields: [carpenterId], references: [id], onDelete: SetNull)
   carpenterId   Int?        @unique
   client        Client?     @relation("ClientAccount", fields: [clientId], references: [id], onDelete: SetNull)
@@ -166,4 +171,29 @@ enum UserRole {
   CLIENT     @map("client")
 
   @@map("UserRole")
+}
+
+enum AccountType {
+  ADMIN     @map("admin")
+  CARPENTER @map("carpenter")
+  CLIENT    @map("client")
+
+  @@map("AccountType")
+}
+
+enum SubscriptionPlan {
+  CLIENT_FREE             @map("client_free")
+  CLIENT_PREMIUM          @map("client_premium")
+  CARPENTER_PROFESSIONAL  @map("carpenter_professional")
+
+  @@map("SubscriptionPlan")
+}
+
+enum SubscriptionStatus {
+  TRIALING @map("trialing")
+  ACTIVE   @map("active")
+  CANCELLED @map("cancelled")
+  EXPIRED  @map("expired")
+
+  @@map("SubscriptionStatus")
 }
