@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseConfigError, getSiteUrl } from '@/lib/supabase/config';
+import { SupabaseConfigError, getSiteUrl, requireSiteUrl } from '@/lib/supabase/config';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   CarpenterSubscriptionPlan,
@@ -139,13 +139,22 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
         ? resolveCarpenterMetadata()
         : resolveClientMetadata(ClientSubscriptionPlan.FREE, invitedBy);
 
+    let siteUrl: string;
+    try {
+      siteUrl = requireSiteUrl();
+    } catch (error) {
+      if (error instanceof SupabaseConfigError) {
+        console.error('Site URL configuration error during sign up:', error.message, error);
+        return { status: 'error', message: error.message };
+      }
+      throw error;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${
-          process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-        }/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback`,
         data: metadata,
       },
     });
