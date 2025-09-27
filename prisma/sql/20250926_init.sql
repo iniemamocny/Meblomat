@@ -92,7 +92,6 @@ CREATE TABLE IF NOT EXISTS "Workshop" (
 
     CONSTRAINT "Workshop_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "Workshop" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Carpenter" (
     "id" SERIAL NOT NULL,
@@ -109,7 +108,6 @@ CREATE TABLE IF NOT EXISTS "Carpenter" (
 
     CONSTRAINT "Carpenter_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "Carpenter" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Client" (
     "id" SERIAL NOT NULL,
@@ -124,7 +122,6 @@ CREATE TABLE IF NOT EXISTS "Client" (
 
     CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "Client" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Order" (
     "id" SERIAL NOT NULL,
@@ -145,7 +142,6 @@ CREATE TABLE IF NOT EXISTS "Order" (
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "Order" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "OrderTask" (
     "id" SERIAL NOT NULL,
@@ -160,7 +156,6 @@ CREATE TABLE IF NOT EXISTS "OrderTask" (
 
     CONSTRAINT "OrderTask_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "OrderTask" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "OrderNote" (
     "id" SERIAL NOT NULL,
@@ -172,7 +167,6 @@ CREATE TABLE IF NOT EXISTS "OrderNote" (
 
     CONSTRAINT "OrderNote_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "OrderNote" ENABLE ROW LEVEL SECURITY;
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "Carpenter_email_key" ON "Carpenter"("email");
@@ -317,47 +311,6 @@ BEGIN
 END
 $$;
 
--- Ensure authenticated users retain access when RLS is enabled.
-DO $$
-DECLARE
-    table_name TEXT;
-    policy_name TEXT;
-    schema_name TEXT := current_schema();
-BEGIN
-    FOREACH table_name IN ARRAY ARRAY[
-        'Workshop',
-        'Carpenter',
-        'Client',
-        'Order',
-        'OrderTask',
-        'OrderNote'
-    ]
-    LOOP
-        policy_name := table_name || '_authenticated_full_access';
-
-        IF NOT EXISTS (
-            SELECT 1
-            FROM pg_policies
-            WHERE schemaname = schema_name
-              AND tablename = table_name
-              AND policyname = policy_name
-        ) THEN
-            EXECUTE format(
-                'CREATE POLICY %I ON %I.%I FOR ALL TO authenticated USING (true) WITH CHECK (true);',
-                policy_name,
-                schema_name,
-                table_name
-            );
-        END IF;
-    END LOOP;
-END
-$$;
-
-GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
+-- Row level security and role-specific grants are not enabled here so that
+-- the default PostgreSQL permissions (owned by the role executing the script)
+-- remain in place. Adjust privileges as required for your deployment.

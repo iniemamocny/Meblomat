@@ -45,6 +45,8 @@ warstwą backendową.
 
    Skrypt pomija już istniejące typy enum, indeksy i klucze obce, dzięki czemu można go bezpiecznie uruchamiać ponownie.
 
+   Domyślnie zachowuje standardowe uprawnienia PostgreSQL (bez dodatkowych ról Supabase), więc w razie potrzeby nadaj dostęp użytkownikom ręcznie.
+
 
 4. Uruchom lokalnie dashboard (w katalogu `web/`):
    ```bash
