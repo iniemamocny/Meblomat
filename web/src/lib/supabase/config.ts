@@ -63,7 +63,7 @@ function validateSiteUrl(url: string) {
         'Nieprawidłowy protokół w zmiennej NEXT_PUBLIC_SITE_URL. Użyj adresu rozpoczynającego się od https://.',
       );
     }
-    return url;
+    return parsed;
   } catch (error) {
     if (error instanceof SupabaseConfigError) {
       throw error;
@@ -74,24 +74,44 @@ function validateSiteUrl(url: string) {
   }
 }
 
+function normalizeSiteUrl(url: URL) {
+  const normalized = url.toString();
+  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+}
+
 export function requireSiteUrl() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!siteUrl) {
-    if (process.env.NODE_ENV && process.env.NODE_ENV !== 'development') {
+  const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+
+  if (!rawSiteUrl) {
+    if (nodeEnv !== 'development') {
       throw new SupabaseConfigError(
-        'Brak wymaganej zmiennej NEXT_PUBLIC_SITE_URL. Skonfiguruj adres strony w pliku .env, aby dokończyć rejestrację użytkowników.',
+        'Brak zmiennej NEXT_PUBLIC_SITE_URL. Podaj publiczny adres wdrożonej aplikacji, aby Supabase mógł wysyłać poprawne linki logowania.',
       );
     }
     return DEFAULT_SITE_URL;
   }
 
-  return validateSiteUrl(siteUrl);
+  const parsed = validateSiteUrl(rawSiteUrl);
+  const isLocalhost =
+    parsed.hostname === 'localhost' ||
+    parsed.hostname === '127.0.0.1' ||
+    parsed.hostname.endsWith('.localhost') ||
+    parsed.hostname.endsWith('.local');
+
+  if (isLocalhost && nodeEnv !== 'development') {
+    throw new SupabaseConfigError(
+      'NEXT_PUBLIC_SITE_URL wskazuje na adres localhost. W środowisku produkcyjnym skonfiguruj pełny publiczny adres aplikacji, aby Supabase mógł poprawnie przekierowywać użytkowników.',
+    );
+  }
+
+  return normalizeSiteUrl(parsed);
 }
 
 export function getSiteUrl() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!siteUrl) {
+  const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!rawSiteUrl) {
     return DEFAULT_SITE_URL;
   }
-  return validateSiteUrl(siteUrl);
+  return normalizeSiteUrl(validateSiteUrl(rawSiteUrl));
 }

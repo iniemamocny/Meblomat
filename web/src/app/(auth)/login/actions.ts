@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseConfigError, getSiteUrl, requireSiteUrl } from '@/lib/supabase/config';
+import { SupabaseConfigError, requireSiteUrl } from '@/lib/supabase/config';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   CarpenterSubscriptionPlan,
@@ -145,7 +145,10 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     } catch (error) {
       if (error instanceof SupabaseConfigError) {
         console.error('Site URL configuration error during sign up:', error.message, error);
-        return { status: 'error', message: error.message };
+        return {
+          status: 'error',
+          message: `${error.message} Gdy tylko uzupełnisz konfigurację, spróbuj ponownie.`,
+        };
       }
       throw error;
     }
@@ -199,10 +202,24 @@ export async function signInWithGoogleAction(): Promise<FormState> {
       return { status: 'error', message: SUPABASE_SETUP_MESSAGE };
     }
 
+    let siteUrl: string;
+    try {
+      siteUrl = requireSiteUrl();
+    } catch (error) {
+      if (error instanceof SupabaseConfigError) {
+        console.error('Site URL configuration error during Google sign in:', error.message, error);
+        return {
+          status: 'error',
+          message: `${error.message} Zaktualizuj konfigurację adresu strony i spróbuj ponownie.`,
+        };
+      }
+      throw error;
+    }
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${getSiteUrl()}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
       },
     });
 
