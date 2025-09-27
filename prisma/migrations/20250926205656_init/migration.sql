@@ -1,3 +1,6 @@
+-- Ensure pgcrypto extension for UUID generation
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- CreateEnum
 CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'READY_FOR_DELIVERY', 'COMPLETED', 'CANCELLED');
 
@@ -54,7 +57,7 @@ CREATE TABLE "Client" (
 -- CreateTable
 CREATE TABLE "Order" (
     "id" SERIAL NOT NULL,
-    "reference" TEXT NOT NULL,
+    "reference" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
