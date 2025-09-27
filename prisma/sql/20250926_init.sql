@@ -1,5 +1,8 @@
 SET search_path = public;
 
+-- Ensure pgcrypto extension for UUID helpers
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- CreateEnum
 DO $$
 BEGIN
@@ -107,7 +110,7 @@ ALTER TABLE "Client" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Order" (
     "id" SERIAL NOT NULL,
-    "reference" TEXT NOT NULL,
+    "reference" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
@@ -179,6 +182,10 @@ CREATE INDEX IF NOT EXISTS "Order_clientId_idx" ON "Order"("clientId");
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "OrderTask_orderId_status_idx" ON "OrderTask"("orderId", "status");
+
+-- Ensure default for order reference to maintain UUID auto-generation
+ALTER TABLE "Order"
+    ALTER COLUMN "reference" SET DEFAULT gen_random_uuid()::text;
 
 -- AddForeignKey
 DO $$
