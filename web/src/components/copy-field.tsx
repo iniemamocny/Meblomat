@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type CopyFieldProps = {
   label: string;
@@ -9,12 +9,27 @@ type CopyFieldProps = {
 
 export function CopyField({ label, value }: CopyFieldProps) {
   const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== undefined) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (timeoutRef.current !== undefined) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = window.setTimeout(() => {
+        setCopied(false);
+        timeoutRef.current = undefined;
+      }, 2000);
     } catch (error) {
       console.error('Failed to copy link', error);
     }
