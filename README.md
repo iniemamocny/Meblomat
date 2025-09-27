@@ -36,11 +36,13 @@ backendową.
    > 🪟 Użytkownicy Windows: ustaw `DATABASE_URL` w PowerShellu
    > poleceniem `setx DATABASE_URL "postgresql://..."` lub skorzystaj z
    > WSL, aby uniknąć problemów z migracjami.
-3. Wygeneruj klienta Prisma i utwórz tabele:
+3. Wygeneruj klienta Prisma i utwórz tabele (migracje są wersjonowane w katalogu `prisma/migrations/`):
    ```bash
    npx prisma generate
    npx prisma migrate deploy
    ```
+   Jeśli musisz ręcznie odtworzyć schemat na Supabase, przejdź do zakładki **SQL Editor** i uruchom skrypt z pliku `prisma/sql/20250926_init.sql`.
+   Skrypt pomija już istniejące typy enum, indeksy i klucze obce, dzięki czemu można go bezpiecznie uruchamiać ponownie.
 4. Uruchom lokalnie dashboard (w katalogu `web/`):
    ```bash
    npm run dev
@@ -102,6 +104,10 @@ bash prisma/migrate.sh
 Skrypt wygeneruje klienta Prisma i zastosuje wszystkie oczekujące
 migracje. W przypadku Supabase możesz skorzystać zarówno z portu 5432
 (połączenie bezpośrednie), jak i z PgBouncera na porcie 6543.
+
+> 💾 Potrzebujesz manualnie zainicjalizować bazę w Supabase? Skorzystaj ze
+> skryptu `prisma/sql/20250926_init.sql`, który odtwarza aktualny schemat
+> (generowany poleceniem `npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script`).
 
 ## Integracja z Supabase i Google Cloud SQL
 
