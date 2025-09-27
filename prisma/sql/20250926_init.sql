@@ -1,47 +1,43 @@
 SET search_path = public;
 
--- CreateEnum
+CREATE TYPE IF NOT EXISTS "OrderStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'READY_FOR_DELIVERY', 'COMPLETED', 'CANCELLED');
+
 DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['PENDING', 'IN_PROGRESS', 'READY_FOR_DELIVERY', 'COMPLETED', 'CANCELLED'];
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type t
-        JOIN pg_namespace n ON n.oid = t.typnamespace
-        WHERE t.typname = 'OrderStatus'
-          AND n.nspname = current_schema()
-    ) THEN
-        CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'READY_FOR_DELIVERY', 'COMPLETED', 'CANCELLED');
-    END IF;
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
 END
 $$;
 
 -- CreateEnum
+CREATE TYPE IF NOT EXISTS "OrderPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+
 DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type t
-        JOIN pg_namespace n ON n.oid = t.typnamespace
-        WHERE t.typname = 'OrderPriority'
-          AND n.nspname = current_schema()
-    ) THEN
-        CREATE TYPE "OrderPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
-    END IF;
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "OrderPriority" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
 END
 $$;
 
 -- CreateEnum
+CREATE TYPE IF NOT EXISTS "TaskStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED');
+
 DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED'];
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type t
-        JOIN pg_namespace n ON n.oid = t.typnamespace
-        WHERE t.typname = 'TaskStatus'
-          AND n.nspname = current_schema()
-    ) THEN
-        CREATE TYPE "TaskStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED');
-    END IF;
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "TaskStatus" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
 END
 $$;
 
