@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { LoginForm } from '@/components/login-form';
 import { getCurrentUser } from '@/server/auth';
@@ -11,6 +12,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const redirectParam = resolvedSearchParams?.redirectTo;
   const redirectTo = Array.isArray(redirectParam) ? redirectParam[0] : redirectParam ?? null;
+  const registeredParam = resolvedSearchParams?.registered;
+  const registered = Array.isArray(registeredParam)
+    ? registeredParam[0]
+    : registeredParam ?? null;
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
@@ -30,11 +35,32 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Podaj dane konta administratora lub członka zespołu, aby uzyskać dostęp do zleceń i raportów.
             </p>
           </div>
-          <div className="mt-8">
+          <div className="mt-8 space-y-4">
+            {registered === 'carpenter' && (
+              <p className="text-xs text-emerald-200">
+                Konto stolarskie zostało utworzone. 14-dniowy okres próbny jest aktywny – zaloguj się, aby rozpocząć.
+              </p>
+            )}
+            {registered === 'client' && (
+              <p className="text-xs text-emerald-200">
+                Konto klienta zostało utworzone. Zaloguj się, aby obserwować status swoich zleceń.
+              </p>
+            )}
             <LoginForm redirectTo={redirectTo} />
           </div>
           <p className="mt-6 text-center text-xs text-slate-400">
-            Nie masz jeszcze konta? Sprawdź instrukcje w dokumentacji projektu, aby dodać użytkownika w bazie danych.
+            Nie masz jeszcze konta?{' '}
+            <Link
+              href={
+                redirectTo
+                  ? `/register?redirectTo=${encodeURIComponent(redirectTo)}`
+                  : '/register'
+              }
+              className="text-emerald-300 hover:text-emerald-200"
+            >
+              Załóż konto
+            </Link>
+            .
           </p>
         </div>
       </div>
