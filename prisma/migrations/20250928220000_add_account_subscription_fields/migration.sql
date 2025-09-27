@@ -1,7 +1,44 @@
--- Create new account and subscription enums
-CREATE TYPE "AccountType" AS ENUM ('admin', 'carpenter', 'client');
-CREATE TYPE "SubscriptionPlan" AS ENUM ('client_free', 'client_premium', 'carpenter_professional');
-CREATE TYPE "SubscriptionStatus" AS ENUM ('trialing', 'active', 'cancelled', 'expired');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'AccountType'
+          AND n.nspname = current_schema()
+    ) THEN
+        CREATE TYPE "AccountType" AS ENUM ('admin', 'carpenter', 'client');
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'SubscriptionPlan'
+          AND n.nspname = current_schema()
+    ) THEN
+        CREATE TYPE "SubscriptionPlan" AS ENUM ('client_free', 'client_premium', 'carpenter_professional');
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'SubscriptionStatus'
+          AND n.nspname = current_schema()
+    ) THEN
+        CREATE TYPE "SubscriptionStatus" AS ENUM ('trialing', 'active', 'cancelled', 'expired');
+    END IF;
+END
+$$;
 
 -- Extend the User table with subscription metadata
 ALTER TABLE "User"
