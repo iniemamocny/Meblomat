@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseConfigError } from '@/lib/supabase/config';
+import { SupabaseConfigError, getSiteUrl } from '@/lib/supabase/config';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   CarpenterSubscriptionPlan,
@@ -183,6 +183,52 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     return {
       status: 'error',
       message: 'Wystąpił nieoczekiwany błąd podczas rejestracji. Spróbuj ponownie.',
+    };
+  }
+}
+
+export async function signInWithGoogleAction(): Promise<FormState> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = resolveSupabaseClient(cookieStore);
+
+    if (!supabase) {
+      return { status: 'error', message: SUPABASE_SETUP_MESSAGE };
+    }
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${getSiteUrl()}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error('Google OAuth sign-in error:', error.message, error);
+      return {
+        status: 'error',
+        message: 'Nie udało się zainicjować logowania przez Google. Spróbuj ponownie.',
+      };
+    }
+
+    if (data?.url) {
+      redirect(data.url);
+    }
+
+    return {
+      status: 'error',
+      message:
+        'Nie udało się przekierować do Google. Upewnij się, że logowanie przez Google jest poprawnie skonfigurowane.',
+    };
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
+    console.error('Unexpected error during Google sign in:', error);
+    return {
+      status: 'error',
+      message: 'Wystąpił błąd podczas logowania przez Google. Spróbuj ponownie później.',
     };
   }
 }
