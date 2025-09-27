@@ -6,7 +6,13 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- CreateEnum
 DO $$
 BEGIN
-    IF to_regtype('public."OrderStatus"') IS NULL THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'OrderStatus'
+          AND n.nspname = current_schema()
+    ) THEN
         EXECUTE 'CREATE TYPE "OrderStatus" AS ENUM (''PENDING'', ''IN_PROGRESS'', ''READY_FOR_DELIVERY'', ''COMPLETED'', ''CANCELLED'')';
     END IF;
 END
@@ -26,7 +32,13 @@ $$;
 -- CreateEnum
 DO $$
 BEGIN
-    IF to_regtype('public."OrderPriority"') IS NULL THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'OrderPriority'
+          AND n.nspname = current_schema()
+    ) THEN
         EXECUTE 'CREATE TYPE "OrderPriority" AS ENUM (''LOW'', ''MEDIUM'', ''HIGH'', ''URGENT'')';
     END IF;
 END
@@ -46,7 +58,13 @@ $$;
 -- CreateEnum
 DO $$
 BEGIN
-    IF to_regtype('public."TaskStatus"') IS NULL THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'TaskStatus'
+          AND n.nspname = current_schema()
+    ) THEN
         EXECUTE 'CREATE TYPE "TaskStatus" AS ENUM (''PENDING'', ''IN_PROGRESS'', ''COMPLETED'', ''BLOCKED'')';
     END IF;
 END
@@ -110,7 +128,7 @@ ALTER TABLE "Client" ENABLE ROW LEVEL SECURITY;
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Order" (
     "id" SERIAL NOT NULL,
-    "reference" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
+    "reference" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "title" TEXT NOT NULL,
     "description" TEXT,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
@@ -185,7 +203,7 @@ CREATE INDEX IF NOT EXISTS "OrderTask_orderId_status_idx" ON "OrderTask"("orderI
 
 -- Ensure default for order reference to maintain UUID auto-generation
 ALTER TABLE "Order"
-    ALTER COLUMN "reference" SET DEFAULT gen_random_uuid()::text;
+    ALTER COLUMN "reference" SET DEFAULT gen_random_uuid();
 
 -- AddForeignKey
 DO $$
