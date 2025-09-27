@@ -113,7 +113,6 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     const email = normalizeString(formData.get('email'));
     const password = normalizeString(formData.get('password'));
     const role = normalizeString(formData.get('role'));
-    const clientPlan = normalizeString(formData.get('clientPlan'));
     const invitedBy = normalizeString(formData.get('invitedBy')) || undefined;
 
     if (!email || !password) {
@@ -138,12 +137,7 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
     const metadata =
       role === UserRole.CARPENTER
         ? resolveCarpenterMetadata()
-        : resolveClientMetadata(
-            clientPlan === ClientSubscriptionPlan.PREMIUM
-              ? ClientSubscriptionPlan.PREMIUM
-              : ClientSubscriptionPlan.FREE,
-            invitedBy,
-          );
+        : resolveClientMetadata(ClientSubscriptionPlan.FREE, invitedBy);
 
     const { data, error } = await supabase.auth.signUp({
       email,
