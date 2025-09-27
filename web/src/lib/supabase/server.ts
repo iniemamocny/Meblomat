@@ -41,7 +41,8 @@ function isReadonlyRequestCookiesError(error: unknown): boolean {
   return (
     error instanceof Error &&
     (error.name === 'ReadonlyRequestCookiesError' ||
-      error.message.includes('ReadonlyRequestCookiesError'))
+      error.message.includes('ReadonlyRequestCookiesError') ||
+      error.message.includes('Cookies can only be modified in a Server Action or Route Handler'))
   );
 }
 
