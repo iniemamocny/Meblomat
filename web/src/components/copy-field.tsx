@@ -9,11 +9,11 @@ type CopyFieldProps = {
 
 export function CopyField({ label, value }: CopyFieldProps) {
   const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current !== undefined) {
+      if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
       }
     };
@@ -23,12 +23,12 @@ export function CopyField({ label, value }: CopyFieldProps) {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      if (timeoutRef.current !== undefined) {
+      if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
       }
-      timeoutRef.current = window.setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setCopied(false);
-        timeoutRef.current = undefined;
+        timeoutRef.current = null;
       }, 2000);
     } catch (error) {
       console.error('Failed to copy link', error);
