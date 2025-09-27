@@ -58,5 +58,5 @@ Dokumentacja Supabase: https://supabase.com/docs
 
 ## Manual QA
 
-- [x] Uruchom aplikację bez zmiennych środowiskowych Supabase (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Przejście pod `/login` wyświetla blok „Skonfiguruj połączenie z Supabase” z instrukcjami zamiast błędu serwera.
+- [x] Uruchom aplikację bez zmiennych środowiskowych Supabase (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Przejście pod `/login` wyświetla blok „Skonfiguruj połączenie z Supabase” z instrukcjami i nie kończy się błędem 500.
 
