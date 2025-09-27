@@ -2,10 +2,10 @@
 
 Ten repozytorium zawiera szkielet systemu do zarządzania warsztatem
 stolarskim. Znajdziesz tutaj gotowy frontend (Next.js), schemat Prisma
-oraz podstawowe narzędzia do łączenia się z bazą danych (Supabase na
-start, później Cloud SQL). Kod został przygotowany tak, aby można było
-natychmiast projektować interfejs i równolegle pracować nad warstwą
-backendową.
+oraz podstawowe narzędzia do łączenia się z bazą danych PostgreSQL
+(lokalną lub hostowaną w chmurze). Kod został przygotowany tak, aby
+można było natychmiast projektować interfejs i równolegle pracować nad
+warstwą backendową.
 
 ## Co jest w pakiecie?
 
@@ -31,8 +31,8 @@ backendową.
    npm install --prefix web
    ```
 2. Skopiuj plik `.env.example` do `.env` i uzupełnij zmienne
-   środowiskowe (w tym `DATABASE_URL`) danymi z zakładki **Project
-   Settings → Database** w panelu Supabase.
+   środowiskowe (w tym `DATABASE_URL`) adresem swojej bazy PostgreSQL
+   (np. `postgresql://user:password@host:5432/dbname`).
    > 🪟 Użytkownicy Windows: ustaw `DATABASE_URL` w PowerShellu
    > poleceniem `setx DATABASE_URL "postgresql://..."` lub skorzystaj z
    > WSL, aby uniknąć problemów z migracjami.
@@ -41,7 +41,7 @@ backendową.
    npx prisma generate
    npx prisma migrate deploy
    ```
-   Jeśli musisz ręcznie odtworzyć schemat na Supabase, przejdź do zakładki **SQL Editor** i uruchom skrypt z pliku `prisma/sql/20250926_init.sql`.
+   Jeśli musisz ręcznie odtworzyć schemat, uruchom skrypt z pliku `prisma/sql/20250926_init.sql` w swojej bazie.
 
    Skrypt pomija już istniejące typy enum, indeksy i klucze obce, dzięki czemu można go bezpiecznie uruchamiać ponownie.
 
@@ -105,22 +105,23 @@ bash prisma/migrate.sh
 ```
 
 Skrypt wygeneruje klienta Prisma i zastosuje wszystkie oczekujące
-migracje. W przypadku Supabase możesz skorzystać zarówno z portu 5432
-(połączenie bezpośrednie), jak i z PgBouncera na porcie 6543.
+migracje. Jeśli Twój dostawca udostępnia PgBouncera lub inny pooler,
+podłącz się do wskazanego portu (najczęściej 6543); w pozostałych
+przypadkach użyj standardowego portu 5432.
 
-> 💾 Potrzebujesz manualnie zainicjalizować bazę w Supabase? Skorzystaj ze
-> skryptu `prisma/sql/20250926_init.sql`, który odtwarza aktualny schemat
+> 💾 Potrzebujesz manualnie zainicjalizować bazę? Skorzystaj ze skryptu
+> `prisma/sql/20250926_init.sql`, który odtwarza aktualny schemat
 > (generowany poleceniem `npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script`).
 
-## Integracja z Supabase i Google Cloud SQL
+## Integracja z bazą danych i Google Cloud SQL
 
-### Start na Supabase
+### Hostowana baza PostgreSQL
 
-Supabase oferuje szybki start z bazą PostgreSQL. W panelu projektów
-kopiuj connection string (najlepiej PgBouncer) i umieść go w `.env`.
-Przy wdrażaniu na Vercelu ustaw tę zmienną w sekcji *Environment
-Variables*. Skrypt `npm run db:check` powinien zwrócić aktualny czas z
-serwera, co potwierdzi poprawne połączenie.
+Platformy takie jak Neon, Railway czy Render udostępniają connection
+string, który wystarczy wkleić do `.env`. Pamiętaj o ustawieniu zmiennej
+`DATABASE_URL` również w środowisku produkcyjnym (np. na Vercelu), aby
+aplikacja mogła połączyć się z bazą. Komenda `npm run db:check`
+zweryfikuje, czy połączenie działa poprawnie.
 
 ### Migracja do Cloud SQL
 
@@ -167,7 +168,7 @@ Run, gdy projekt będzie gotowy do wdrożeń.
 ## Następne kroki
 
 1. Zaimplementuj endpointy `POST`/`PATCH` dla zamówień oraz notatek.
-2. Dodaj autoryzację (np. Clerk, Auth0 lub Supabase Auth).
+2. Dodaj autoryzację (np. Clerk, Auth0 lub własny moduł oAuth/OpenID).
 3. Rozbuduj pipeline CI/CD i monitoruj logi po wdrożeniu na produkcję.
 
 Powodzenia w dalszym rozwijaniu Meblomatu! Jeśli potrzebujesz kolejnych
