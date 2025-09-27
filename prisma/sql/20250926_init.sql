@@ -1,6 +1,13 @@
 SET search_path = public;
 
-CREATE TYPE IF NOT EXISTS "OrderStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'READY_FOR_DELIVERY', 'COMPLETED', 'CANCELLED');
+-- CreateEnum
+DO $$
+BEGIN
+    IF to_regtype('public."OrderStatus"') IS NULL THEN
+        EXECUTE 'CREATE TYPE "OrderStatus" AS ENUM (''PENDING'', ''IN_PROGRESS'', ''READY_FOR_DELIVERY'', ''COMPLETED'', ''CANCELLED'')';
+    END IF;
+END
+$$;
 
 DO $$
 DECLARE
@@ -14,7 +21,13 @@ END
 $$;
 
 -- CreateEnum
-CREATE TYPE IF NOT EXISTS "OrderPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+DO $$
+BEGIN
+    IF to_regtype('public."OrderPriority"') IS NULL THEN
+        EXECUTE 'CREATE TYPE "OrderPriority" AS ENUM (''LOW'', ''MEDIUM'', ''HIGH'', ''URGENT'')';
+    END IF;
+END
+$$;
 
 DO $$
 DECLARE
@@ -28,7 +41,13 @@ END
 $$;
 
 -- CreateEnum
-CREATE TYPE IF NOT EXISTS "TaskStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED');
+DO $$
+BEGIN
+    IF to_regtype('public."TaskStatus"') IS NULL THEN
+        EXECUTE 'CREATE TYPE "TaskStatus" AS ENUM (''PENDING'', ''IN_PROGRESS'', ''COMPLETED'', ''BLOCKED'')';
+    END IF;
+END
+$$;
 
 DO $$
 DECLARE
