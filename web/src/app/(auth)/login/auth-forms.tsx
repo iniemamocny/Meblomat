@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { INITIAL_STATE, signInAction, signUpAction } from './actions';
+import {
+  INITIAL_STATE,
+  signInAction,
+  signInWithGoogleAction,
+  signUpAction,
+} from './actions';
 import { ClientSubscriptionPlan, UserRole } from '@/lib/domain';
 
 type AuthFormsProps = {
@@ -18,6 +23,23 @@ function SubmitButton({ label }: { label: string }) {
       disabled={pending}
     >
       {pending ? 'Przetwarzanie…' : label}
+    </button>
+  );
+}
+
+type FormActionHandler = (payload: FormData) => void;
+
+function GoogleButton({ action }: { action: FormActionHandler }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      formAction={action}
+      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={pending}
+    >
+      {pending ? 'Przekierowuję…' : 'Zaloguj przez Google'}
     </button>
   );
 }
@@ -49,6 +71,7 @@ function SuccessMessage({ state }: { state: { status: string; message?: string }
 export function AuthForms({ invitedBy }: AuthFormsProps) {
   const [mode, setMode] = useState<'login' | 'register'>(invitedBy ? 'register' : 'login');
   const [loginState, loginAction] = useFormState(signInAction, INITIAL_STATE);
+  const [googleState, googleAction] = useFormState(signInWithGoogleAction, INITIAL_STATE);
   const [registerState, registerAction] = useFormState(signUpAction, INITIAL_STATE);
 
   const invitationNotice = useMemo(() => {
@@ -115,7 +138,14 @@ export function AuthForms({ invitedBy }: AuthFormsProps) {
             />
           </div>
           <ErrorMessage state={loginState} />
-          <SubmitButton label="Zaloguj się" />
+          <ErrorMessage state={googleState} />
+          <div className="space-y-2">
+            <SubmitButton label="Zaloguj się" />
+            <GoogleButton action={googleAction} />
+          </div>
+          <p className="text-center text-[11px] text-slate-400">
+            W panelu Supabase włącz dostawcę Google i uzupełnij dane OAuth, aby logowanie zadziałało.
+          </p>
         </form>
       ) : (
         <form className="space-y-4" action={registerAction}>
