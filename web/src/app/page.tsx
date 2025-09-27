@@ -69,7 +69,8 @@ export default async function Home() {
   const topClients = dashboard.clients.slice(0, 6);
 
   const siteUrl = getSiteUrl().replace(/\/$/, '');
-  const affiliateLink = `${siteUrl}/login?ref=${affiliateCode ?? session.user.id}`;
+  const affiliateReference = affiliateCode ?? session.user.id;
+  const affiliateLink = `${siteUrl}/login?ref=${encodeURIComponent(affiliateReference)}`;
 
   const roleLabel =
     userRole === UserRole.ADMIN
