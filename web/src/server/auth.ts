@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import type { UserRole } from '@prisma/client';
+import type { UserRole } from '@/lib/domain';
 import { prisma } from '@meblomat/prisma';
 
 const SESSION_COOKIE_NAME = process.env.AUTH_SESSION_COOKIE_NAME ?? 'meblomat_session';
@@ -44,8 +44,9 @@ function getSessionExpiryDate() {
   return new Date(Date.now() + SESSION_TTL_MINUTES * 60 * 1000);
 }
 
-function setSessionCookie(token: string, expiresAt: Date) {
-  cookies().set({
+async function setSessionCookie(token: string, expiresAt: Date) {
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: SESSION_COOKIE_NAME,
     value: token,
     httpOnly: true,
@@ -56,8 +57,9 @@ function setSessionCookie(token: string, expiresAt: Date) {
   });
 }
 
-function clearSessionCookie() {
-  cookies().set({
+async function clearSessionCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: SESSION_COOKIE_NAME,
     value: '',
     httpOnly: true,
@@ -80,21 +82,23 @@ export async function createSession(userId: number) {
     },
   });
 
-  setSessionCookie(token, expiresAt);
+  await setSessionCookie(token, expiresAt);
 
   return { token, expiresAt };
 }
 
 export async function destroySession(token?: string) {
-  const cookieToken = token ?? cookies().get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const cookieToken = token ?? cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (cookieToken) {
     await prisma.session.deleteMany({ where: { token: cookieToken } });
   }
-  clearSessionCookie();
+  await clearSessionCookie();
 }
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
-  const token = cookies().get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) {
     return null;
   }
@@ -107,13 +111,13 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   });
 
   if (!session) {
-    clearSessionCookie();
+    await clearSessionCookie();
     return null;
   }
 
   if (session.expiresAt.getTime() <= Date.now()) {
     await prisma.session.deleteMany({ where: { token: session.token } });
-    clearSessionCookie();
+    await clearSessionCookie();
     return null;
   }
 

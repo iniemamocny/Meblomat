@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation';
 import { LoginForm } from '@/components/login-form';
 import { getCurrentUser } from '@/server/auth';
 
+type LoginPageSearchParams = Record<string, string | string[] | undefined>;
 type LoginPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<LoginPageSearchParams>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const redirectParam = searchParams?.redirectTo;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const redirectParam = resolvedSearchParams?.redirectTo;
   const redirectTo = Array.isArray(redirectParam) ? redirectParam[0] : redirectParam ?? null;
   const currentUser = await getCurrentUser();
 
