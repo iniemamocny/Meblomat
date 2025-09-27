@@ -107,6 +107,84 @@ BEGIN
 END
 $$;
 
+-- CreateEnum
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'AccountType'
+          AND n.nspname = current_schema()
+    ) THEN
+        EXECUTE 'CREATE TYPE "AccountType" AS ENUM (''admin'', ''carpenter'', ''client'')';
+    END IF;
+END
+$$;
+
+DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['admin', 'carpenter', 'client'];
+BEGIN
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "AccountType" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
+END
+$$;
+
+-- CreateEnum
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'SubscriptionPlan'
+          AND n.nspname = current_schema()
+    ) THEN
+        EXECUTE 'CREATE TYPE "SubscriptionPlan" AS ENUM (''client_free'', ''client_premium'', ''carpenter_professional'')';
+    END IF;
+END
+$$;
+
+DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['client_free', 'client_premium', 'carpenter_professional'];
+BEGIN
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "SubscriptionPlan" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
+END
+$$;
+
+-- CreateEnum
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'SubscriptionStatus'
+          AND n.nspname = current_schema()
+    ) THEN
+        EXECUTE 'CREATE TYPE "SubscriptionStatus" AS ENUM (''trialing'', ''active'', ''cancelled'', ''expired'')';
+    END IF;
+END
+$$;
+
+DO $$
+DECLARE
+    desired_value TEXT;
+    desired_values TEXT[] := ARRAY['trialing', 'active', 'cancelled', 'expired'];
+BEGIN
+    FOREACH desired_value IN ARRAY desired_values LOOP
+        EXECUTE format('ALTER TYPE "SubscriptionStatus" ADD VALUE IF NOT EXISTS %L', desired_value);
+    END LOOP;
+END
+$$;
+
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "Workshop" (
     "id" SERIAL NOT NULL,
@@ -200,6 +278,11 @@ CREATE TABLE IF NOT EXISTS "User" (
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "roles" "UserRole"[] NOT NULL DEFAULT ARRAY[]::"UserRole"[],
+    "accountType" "AccountType" NOT NULL DEFAULT 'client',
+    "subscriptionPlan" "SubscriptionPlan",
+    "subscriptionStatus" "SubscriptionStatus",
+    "trialStartedAt" TIMESTAMP(3),
+    "trialEndsAt" TIMESTAMP(3),
     "carpenterId" INTEGER,
     "clientId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

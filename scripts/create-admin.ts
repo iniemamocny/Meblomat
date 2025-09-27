@@ -1,5 +1,10 @@
 import 'dotenv/config';
-import { PrismaClient, UserRole } from '@prisma/client';
+import {
+  AccountType,
+  PrismaClient,
+  SubscriptionStatus,
+  UserRole,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -20,11 +25,21 @@ async function main() {
     update: {
       passwordHash,
       roles: { set: [UserRole.admin] },
+      accountType: AccountType.admin,
+      subscriptionPlan: null,
+      subscriptionStatus: SubscriptionStatus.active,
+      trialStartedAt: null,
+      trialEndsAt: null,
     },
     create: {
       email,
       passwordHash,
       roles: [UserRole.admin],
+      accountType: AccountType.admin,
+      subscriptionPlan: null,
+      subscriptionStatus: SubscriptionStatus.active,
+      trialStartedAt: null,
+      trialEndsAt: null,
     },
   });
 

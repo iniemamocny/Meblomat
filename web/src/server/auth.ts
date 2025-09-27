@@ -1,7 +1,12 @@
 import { cookies } from 'next/headers';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import type { UserRole } from '@/lib/domain';
+import type {
+  AccountType,
+  SubscriptionPlan,
+  SubscriptionStatus,
+  UserRole,
+} from '@/lib/domain';
 import { prisma } from '@meblomat/prisma';
 
 const SESSION_COOKIE_NAME = process.env.AUTH_SESSION_COOKIE_NAME ?? 'meblomat_session';
@@ -17,6 +22,11 @@ export type AuthenticatedUser = {
   id: number;
   email: string;
   roles: UserRole[];
+  accountType: AccountType;
+  subscriptionPlan: SubscriptionPlan | null;
+  subscriptionStatus: SubscriptionStatus | null;
+  trialStartedAt: Date | null;
+  trialEndsAt: Date | null;
   carpenterId: number | null;
   clientId: number | null;
 };
@@ -125,6 +135,15 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     id: session.user.id,
     email: session.user.email,
     roles: session.user.roles,
+    accountType: session.user.accountType as AccountType,
+    subscriptionPlan: (session.user.subscriptionPlan ?? null) as
+      | SubscriptionPlan
+      | null,
+    subscriptionStatus: (session.user.subscriptionStatus ?? null) as
+      | SubscriptionStatus
+      | null,
+    trialStartedAt: session.user.trialStartedAt ?? null,
+    trialEndsAt: session.user.trialEndsAt ?? null,
     carpenterId: session.user.carpenterId ?? null,
     clientId: session.user.clientId ?? null,
   };

@@ -37,6 +37,15 @@ export const UserRole = Object.freeze({
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
+export const AccountType = Object.freeze({
+  ADMIN: 'admin',
+  CARPENTER: 'carpenter',
+  CLIENT: 'client',
+} as const);
+
+export type AccountType = (typeof AccountType)[keyof typeof AccountType];
+export const ACCOUNT_TYPES = Object.values(AccountType) as AccountType[];
+
 export const ClientSubscriptionPlan = Object.freeze({
   FREE: 'client_free',
   PREMIUM: 'client_premium',
@@ -51,3 +60,26 @@ export const CarpenterSubscriptionPlan = Object.freeze({
 
 export type CarpenterSubscriptionPlan =
   (typeof CarpenterSubscriptionPlan)[keyof typeof CarpenterSubscriptionPlan];
+
+export const SubscriptionPlan = Object.freeze({
+  CLIENT_FREE: ClientSubscriptionPlan.FREE,
+  CLIENT_PREMIUM: ClientSubscriptionPlan.PREMIUM,
+  CARPENTER_PROFESSIONAL: CarpenterSubscriptionPlan.PROFESSIONAL,
+} as const);
+
+export type SubscriptionPlan =
+  (typeof SubscriptionPlan)[keyof typeof SubscriptionPlan];
+export const SUBSCRIPTION_PLANS =
+  Object.values(SubscriptionPlan) as SubscriptionPlan[];
+
+export const SubscriptionStatus = Object.freeze({
+  TRIALING: 'trialing',
+  ACTIVE: 'active',
+  CANCELLED: 'cancelled',
+  EXPIRED: 'expired',
+} as const);
+
+export type SubscriptionStatus =
+  (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
+export const SUBSCRIPTION_STATUSES =
+  Object.values(SubscriptionStatus) as SubscriptionStatus[];
