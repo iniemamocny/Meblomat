@@ -19,8 +19,20 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
-    const url = new URL(window.location.href);
+    let supabase: ReturnType<typeof getSupabaseBrowserClient> | null = null;
+    let url: URL;
+
+    try {
+      supabase = getSupabaseBrowserClient();
+      url = new URL(window.location.href);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Wystąpił nieoczekiwany błąd podczas logowania.');
+      }
+      return;
+    }
     const errorDescription =
       url.searchParams.get('error_description') ?? url.searchParams.get('error');
 
@@ -36,12 +48,18 @@ export default function AuthCallbackPage() {
     async function finalizeSession() {
       try {
         if (tokenHash && typeParam) {
+          const client = supabase;
+
+          if (!client) {
+            setError('Nie udało się zainicjalizować klienta Supabase.');
+            return;
+          }
           if (!SUPPORTED_EMAIL_OTP_TYPES.includes(typeParam as EmailOtpType)) {
             setError('Link aktywacyjny ma nieobsługiwany typ potwierdzenia.');
             return;
           }
 
-          const { error } = await supabase.auth.verifyOtp({
+          const { error } = await client.auth.verifyOtp({
             type: typeParam as EmailOtpType,
             token_hash: tokenHash,
           });
@@ -56,7 +74,13 @@ export default function AuthCallbackPage() {
         }
 
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(url.toString());
+          const client = supabase;
+
+          if (!client) {
+            setError('Nie udało się zainicjalizować klienta Supabase.');
+            return;
+          }
+          const { error } = await client.auth.exchangeCodeForSession(url.toString());
 
           if (error) {
             setError(error.message);
