@@ -42,7 +42,10 @@ backendową.
    npx prisma migrate deploy
    ```
    Jeśli musisz ręcznie odtworzyć schemat na Supabase, przejdź do zakładki **SQL Editor** i uruchom skrypt z pliku `prisma/sql/20250926_init.sql`.
+
    Skrypt pomija już istniejące typy enum, indeksy i klucze obce, dzięki czemu można go bezpiecznie uruchamiać ponownie.
+
+
 4. Uruchom lokalnie dashboard (w katalogu `web/`):
    ```bash
    npm run dev
