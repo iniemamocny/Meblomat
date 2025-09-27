@@ -46,8 +46,7 @@ BEGIN
 END
 $$;
 
--- CreateTable
-CREATE TABLE "Workshop" (
+CREATE TABLE IF NOT EXISTS "Workshop" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -58,8 +57,7 @@ CREATE TABLE "Workshop" (
     CONSTRAINT "Workshop_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Carpenter" (
+CREATE TABLE IF NOT EXISTS "Carpenter" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -75,8 +73,7 @@ CREATE TABLE "Carpenter" (
     CONSTRAINT "Carpenter_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Client" (
+CREATE TABLE IF NOT EXISTS "Client" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "company" TEXT,
@@ -90,8 +87,7 @@ CREATE TABLE "Client" (
     CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Order" (
+CREATE TABLE IF NOT EXISTS "Order" (
     "id" SERIAL NOT NULL,
     "reference" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "title" TEXT NOT NULL,
@@ -111,8 +107,7 @@ CREATE TABLE "Order" (
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "OrderTask" (
+CREATE TABLE IF NOT EXISTS "OrderTask" (
     "id" SERIAL NOT NULL,
     "orderId" INTEGER NOT NULL,
     "title" TEXT NOT NULL,
@@ -126,8 +121,7 @@ CREATE TABLE "OrderTask" (
     CONSTRAINT "OrderTask_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "OrderNote" (
+CREATE TABLE IF NOT EXISTS "OrderNote" (
     "id" SERIAL NOT NULL,
     "orderId" INTEGER NOT NULL,
     "author" TEXT NOT NULL,
@@ -138,50 +132,133 @@ CREATE TABLE "OrderNote" (
     CONSTRAINT "OrderNote_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "Carpenter_email_key" ON "Carpenter"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "Carpenter_email_key" ON "Carpenter"("email");
 
 -- CreateIndex
-CREATE INDEX "Carpenter_workshopId_idx" ON "Carpenter"("workshopId");
+CREATE INDEX IF NOT EXISTS "Carpenter_workshopId_idx" ON "Carpenter"("workshopId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Client_email_key" ON "Client"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "Client_email_key" ON "Client"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Order_reference_key" ON "Order"("reference");
+CREATE UNIQUE INDEX IF NOT EXISTS "Order_reference_key" ON "Order"("reference");
 
 -- CreateIndex
-CREATE INDEX "Order_status_priority_idx" ON "Order"("status", "priority");
+CREATE INDEX IF NOT EXISTS "Order_status_priority_idx" ON "Order"("status", "priority");
 
 -- CreateIndex
-CREATE INDEX "Order_dueDate_idx" ON "Order"("dueDate");
+CREATE INDEX IF NOT EXISTS "Order_dueDate_idx" ON "Order"("dueDate");
 
 -- CreateIndex
-CREATE INDEX "Order_carpenterId_idx" ON "Order"("carpenterId");
+CREATE INDEX IF NOT EXISTS "Order_carpenterId_idx" ON "Order"("carpenterId");
 
 -- CreateIndex
-CREATE INDEX "Order_clientId_idx" ON "Order"("clientId");
+CREATE INDEX IF NOT EXISTS "Order_clientId_idx" ON "Order"("clientId");
 
 -- CreateIndex
-CREATE INDEX "OrderTask_orderId_status_idx" ON "OrderTask"("orderId", "status");
+CREATE INDEX IF NOT EXISTS "OrderTask_orderId_status_idx" ON "OrderTask"("orderId", "status");
 
--- AddForeignKey
-ALTER TABLE "Carpenter" ADD CONSTRAINT "Carpenter_workshopId_fkey" FOREIGN KEY ("workshopId") REFERENCES "Workshop"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'Carpenter'
+          AND constraint_name = 'Carpenter_workshopId_fkey'
+    ) THEN
+        ALTER TABLE "Carpenter" ADD CONSTRAINT "Carpenter_workshopId_fkey" FOREIGN KEY ("workshopId") REFERENCES "Workshop"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
--- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_carpenterId_fkey" FOREIGN KEY ("carpenterId") REFERENCES "Carpenter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'Order'
+          AND constraint_name = 'Order_carpenterId_fkey'
+    ) THEN
+        ALTER TABLE "Order" ADD CONSTRAINT "Order_carpenterId_fkey" FOREIGN KEY ("carpenterId") REFERENCES "Carpenter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
--- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'Order'
+          AND constraint_name = 'Order_clientId_fkey'
+    ) THEN
+        ALTER TABLE "Order" ADD CONSTRAINT "Order_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
--- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_workshopId_fkey" FOREIGN KEY ("workshopId") REFERENCES "Workshop"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'Order'
+          AND constraint_name = 'Order_workshopId_fkey'
+    ) THEN
+        ALTER TABLE "Order" ADD CONSTRAINT "Order_workshopId_fkey" FOREIGN KEY ("workshopId") REFERENCES "Workshop"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
--- AddForeignKey
-ALTER TABLE "OrderTask" ADD CONSTRAINT "OrderTask_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'OrderTask'
+          AND constraint_name = 'OrderTask_orderId_fkey'
+    ) THEN
+        ALTER TABLE "OrderTask" ADD CONSTRAINT "OrderTask_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
--- AddForeignKey
-ALTER TABLE "OrderTask" ADD CONSTRAINT "OrderTask_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "Carpenter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'OrderTask'
+          AND constraint_name = 'OrderTask_assigneeId_fkey'
+    ) THEN
+        ALTER TABLE "OrderTask" ADD CONSTRAINT "OrderTask_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "Carpenter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
--- AddForeignKey
-ALTER TABLE "OrderNote" ADD CONSTRAINT "OrderNote_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_type = 'FOREIGN KEY'
+          AND table_schema = current_schema()
+          AND table_name = 'OrderNote'
+          AND constraint_name = 'OrderNote_orderId_fkey'
+    ) THEN
+        ALTER TABLE "OrderNote" ADD CONSTRAINT "OrderNote_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END
+$$;
