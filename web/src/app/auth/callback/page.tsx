@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { EmailOtpType } from '@supabase/supabase-js';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { SupabaseConfigError } from '@/lib/supabase/config';
 
 const SUPPORTED_EMAIL_OTP_TYPES: EmailOtpType[] = [
   'signup',
@@ -19,47 +20,35 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let supabase: ReturnType<typeof getSupabaseBrowserClient> | null = null;
-    let url: URL;
-
-    try {
-      supabase = getSupabaseBrowserClient();
-      url = new URL(window.location.href);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Wystąpił nieoczekiwany błąd podczas logowania.');
-      }
-      return;
-    }
-    const errorDescription =
-      url.searchParams.get('error_description') ?? url.searchParams.get('error');
-
-    if (errorDescription) {
-      setError(errorDescription);
-      return;
-    }
-
-    const tokenHash = url.searchParams.get('token_hash');
-    const typeParam = url.searchParams.get('type');
-    const code = url.searchParams.get('code');
-
     async function finalizeSession() {
       try {
-        if (tokenHash && typeParam) {
-          const client = supabase;
+        const supabase = getSupabaseBrowserClient();
+        const url = new URL(window.location.href);
 
-          if (!client) {
-            setError('Nie udało się zainicjalizować klienta Supabase.');
-            return;
-          }
+        const errorDescription =
+          url.searchParams.get('error_description') ?? url.searchParams.get('error');
+
+        if (errorDescription) {
+          setError(errorDescription);
+          return;
+        }
+
+        const tokenHash = url.searchParams.get('token_hash');
+        const typeParam = url.searchParams.get('type');
+        const code = url.searchParams.get('code');
+
+        if (!supabase) {
+          setError('Nie udało się zainicjalizować klienta Supabase.');
+          return;
+        }
+
+        if (tokenHash && typeParam) {
           if (!SUPPORTED_EMAIL_OTP_TYPES.includes(typeParam as EmailOtpType)) {
             setError('Link aktywacyjny ma nieobsługiwany typ potwierdzenia.');
             return;
           }
 
-          const { error } = await client.auth.verifyOtp({
+          const { error } = await supabase.auth.verifyOtp({
             type: typeParam as EmailOtpType,
             token_hash: tokenHash,
           });
@@ -74,13 +63,7 @@ export default function AuthCallbackPage() {
         }
 
         if (code) {
-          const client = supabase;
-
-          if (!client) {
-            setError('Nie udało się zainicjalizować klienta Supabase.');
-            return;
-          }
-          const { error } = await client.auth.exchangeCodeForSession(url.toString());
+          const { error } = await supabase.auth.exchangeCodeForSession(url.toString());
 
           if (error) {
             setError(error.message);
@@ -93,6 +76,10 @@ export default function AuthCallbackPage() {
 
         setError('Brak tokenu uwierzytelniającego w adresie URL.');
       } catch (err) {
+        if (err instanceof SupabaseConfigError) {
+          setError(err.message);
+          return;
+        }
         if (err instanceof Error) {
           setError(err.message);
         } else {
