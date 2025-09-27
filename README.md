@@ -48,7 +48,7 @@ warstwą backendową.
 
    Skrypt pomija już istniejące typy enum, indeksy i klucze obce, dzięki czemu można go bezpiecznie uruchamiać ponownie.
 
-   Domyślnie zachowuje standardowe uprawnienia PostgreSQL (bez dodatkowych ról Supabase), więc w razie potrzeby nadaj dostęp użytkownikom ręcznie.
+   Po tej zmianie tabele `User`/`Session` (oraz odpowiadające im `public.users`/`public.sessions`) mają włączoną politykę RLS, która dopuszcza jedynie rolę `service_role` Supabase. Jeśli chcesz, aby inne role (np. `authenticated`/`anon` lub dedykowane role aplikacji) mogły czytać lub zapisywać dane logowania, dodaj własne polityki `CREATE POLICY` po wdrożeniu migracji.
 
 
 4. Utwórz konto administratora (wymagane do logowania):

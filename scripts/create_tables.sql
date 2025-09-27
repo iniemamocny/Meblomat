@@ -199,6 +199,27 @@ CREATE TABLE IF NOT EXISTS public.sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON public.sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON public.sessions (expires_at);
 
+-- Enforce row level security defaults that align with Supabase expectations.
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS service_role_all_access_public_users ON public.users;
+CREATE POLICY service_role_all_access_public_users
+  ON public.users
+  FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sessions FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS service_role_all_access_public_sessions ON public.sessions;
+CREATE POLICY service_role_all_access_public_sessions
+  ON public.sessions
+  FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
 -- Orders table.
 CREATE TABLE IF NOT EXISTS public.orders (
   id SERIAL PRIMARY KEY,
